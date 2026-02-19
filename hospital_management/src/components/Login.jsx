@@ -1,6 +1,9 @@
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
+
 
 function Login({ setShowRegister }) {
+  const navigate = useNavigate();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false); // Estado para el ojito
@@ -23,11 +26,11 @@ function Login({ setShowRegister }) {
         alert(`Bienvenido ${data.role}`);
         // Aquí agregarás la navegación más adelante
         if (data.role === "doctor") {
-          console.log("Ir a dashboard doctor");
+          navigate("/doctor");
         } else if (data.role === "admin") {
           console.log("Ir a panel administrador");
         } else {
-          console.log("Ir a panel paciente");
+          navigate("/paciente");
         }
       } else {
         alert("Credenciales incorrectas");
@@ -211,7 +214,7 @@ function Login({ setShowRegister }) {
                 Don't have an account?{" "}
                 <button
                   type="button"
-                  onClick={() => setShowRegister(true)}
+                  onClick={() => navigate("/register")}
                   className="font-semibold text-[#135bec] hover:underline bg-transparent border-none cursor-pointer p-0 inline-flex"
                 >
                   Request Access
