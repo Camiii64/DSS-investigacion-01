@@ -21,10 +21,10 @@ export default function Admin() {
     const fetchAllData = async () => {
         try {
             const [resStats, resPacientes, resDoctores, resCitas] = await Promise.all([
-                fetch("https://api-mediconnect-2026.azurewebsites.net/admin/stats"),
-                fetch("https://api-mediconnect-2026.azurewebsites.net/admin/pacientes"),
-                fetch("https://api-mediconnect-2026.azurewebsites.net/admin/doctores"),
-                fetch("https://api-mediconnect-2026.azurewebsites.net/admin/citas")
+                fetch("https://api-mediconnect-2026-agh0gyhbdkh4achy.canadacentral-01.azurewebsites.net/admin/stats"),
+                fetch("https://api-mediconnect-2026-agh0gyhbdkh4achy.canadacentral-01.azurewebsites.net/admin/pacientes"),
+                fetch("https://api-mediconnect-2026-agh0gyhbdkh4achy.canadacentral-01.azurewebsites.net/admin/doctores"),
+                fetch("https://api-mediconnect-2026-agh0gyhbdkh4achy.canadacentral-01.azurewebsites.net/admin/citas")
             ]);
 
             setStats(await resStats.json());
