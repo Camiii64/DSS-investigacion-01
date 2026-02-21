@@ -1,12 +1,30 @@
 import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom"; // 1. IMPORTAMOS NAVEGACIÓN
 
 export default function DoctorPanel() {
+  const navigate = useNavigate(); // 2. INICIALIZAR NAVEGACIÓN
+
   const [appointments, setAppointments] = useState([]);
   const [responses, setResponses] = useState({});
   const [searchTerm, setSearchTerm] = useState("");
 
   const DOCTOR_ID = localStorage.getItem("userId");
   const DOCTOR_NAME = localStorage.getItem("userName");
+
+  useEffect(() => {
+    // 3. PROTECCIÓN DE RUTA
+    if (!DOCTOR_ID) {
+      navigate("/login");
+      return;
+    }
+    fetchAppointments();
+  }, [DOCTOR_ID, navigate]);
+
+  // 4. FUNCIÓN PARA CERRAR SESIÓN
+  const handleLogout = () => {
+    localStorage.clear();
+    navigate("/login");
+  };
 
   // --- CARGAR DATOS REALES DE LA DB ---
   const fetchAppointments = async () => {
@@ -20,14 +38,6 @@ export default function DoctorPanel() {
       console.error("Error al cargar citas:", error);
     }
   };
-
-  useEffect(() => {
-    if (DOCTOR_ID) {
-      fetchAppointments();
-    } else {
-      console.log("Doctor ID no encontrado en localStorage");
-    }
-  }, [DOCTOR_ID]);
 
   // --- LÓGICA DE NEGOCIO CONECTADA ---
   const handleAccept = async (id) => {
@@ -66,8 +76,8 @@ export default function DoctorPanel() {
           method: "PUT",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            estado: "RECHAZADA",
-            respuesta_doctor: responses[id] || "",
+            estado: "CANCELADA", // 5. CORREGIDO: Usamos "CANCELADA" para coincidir con la DB y el Paciente
+            respuesta_doctor: responses[id] || "El doctor ha cancelado esta cita.",
           }),
         }
       );
@@ -93,6 +103,11 @@ export default function DoctorPanel() {
       app.patientName?.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
+  // Filtramos las canceladas solo para las estadísticas
+  const canceledApps = appointments.filter(
+    (app) => app.estado === "CANCELADA"
+  );
+
   return (
     <div style={s.page}>
       {/* Header */}
@@ -107,11 +122,17 @@ export default function DoctorPanel() {
           </div>
           <div style={s.userGroup}>
             <div style={{ textAlign: "right" }}>
-              <p style={s.userName}>{DOCTOR_NAME}</p>
-              <p style={s.userSpec}>Medicina General</p>
+              <p style={s.userName}>{DOCTOR_NAME || "Doctor"}</p>
+              {/* 6. AÑADIMOS BOTÓN DE LOGOUT (Como texto pequeño debajo del nombre) */}
+              <button
+                onClick={handleLogout}
+                style={{ background: 'none', border: 'none', color: '#ef4444', fontSize: '11px', cursor: 'pointer', padding: 0, marginTop: '2px', fontWeight: 'bold' }}
+              >
+                Cerrar Sesión
+              </button>
             </div>
             <div style={s.avatar}>
-              {DOCTOR_NAME?.substring(0, 2).toUpperCase()}
+              {DOCTOR_NAME ? DOCTOR_NAME.substring(0, 2).toUpperCase() : "DR"}
             </div>
           </div>
         </div>
@@ -228,26 +249,30 @@ export default function DoctorPanel() {
                       </td>
                     </tr>
                   ))}
+                  {acceptedApps.length === 0 && (
+                    <tr style={s.tr}>
+                      <td colSpan="3" style={{ ...s.td, textAlign: 'center', color: '#4c669a' }}>
+                        No hay citas confirmadas.
+                      </td>
+                    </tr>
+                  )}
                 </tbody>
               </table>
             </div>
 
+            {/* 7. ESTADÍSTICAS CORREGIDAS */}
             <div style={s.statsGrid}>
               <div style={s.statCard}>
-                <p style={s.statLabel}>EN BASE DE DATOS</p>
-                <p style={s.statVal}>{appointments.length}</p>
+                <p style={s.statLabel}>CONFIRMADAS</p>
+                <p style={{ ...s.statVal, color: "#10b981" }}>{acceptedApps.length}</p>
               </div>
               <div style={s.statCard}>
                 <p style={s.statLabel}>PENDIENTES</p>
-                <p style={{ ...s.statVal, color: "#ef4444" }}>
-                  {pendingApps.length}
-                </p>
+                <p style={{ ...s.statVal, color: "#ea580c" }}>{pendingApps.length}</p>
               </div>
               <div style={s.statCard}>
-                <p style={s.statLabel}>CONFIRMADAS</p>
-                <p style={{ ...s.statVal, color: "#10b981" }}>
-                  {acceptedApps.length}
-                </p>
+                <p style={s.statLabel}>RECHAZADAS</p>
+                <p style={{ ...s.statVal, color: "#ef4444" }}>{canceledApps.length}</p>
               </div>
             </div>
           </section>
@@ -257,10 +282,8 @@ export default function DoctorPanel() {
   );
 }
 
-
-// MANTENEMOS TU OBJETO DE ESTILOS "s" EXACTAMENTE IGUAL...
+// ESTILOS (Mantenidos exactamente iguales, sin tocar Tailwind)
 const s = {
-  /* ... (aquí va tu objeto de estilos original) ... */
   page: { backgroundColor: '#f6f6f8', minHeight: '100vh', fontFamily: 'sans-serif', color: '#0d121b' },
   header: { backgroundColor: '#fff', borderBottom: '1px solid #e7ebf3', padding: '12px 60px' },
   containerFlex: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', maxWidth: '1200px', margin: '0 auto' },
@@ -277,7 +300,8 @@ const s = {
   heroTitle: { fontSize: '28px', fontWeight: '900', margin: 0 },
   heroSub: { color: '#4c669a', marginTop: '4px' },
   grid: { display: 'grid', gridTemplateColumns: '1fr 1.5fr', gap: '40px' },
-  sectionTitle: { fontSize: '18px', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '8px' },
+  column: {}, // Añadido para evitar error si estaba vacío
+  sectionTitle: { fontSize: '18px', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '16px' }, // Añadido marginBottom
   badge: { backgroundColor: '#135bec20', color: '#135bec', fontSize: '12px', padding: '2px 8px', borderRadius: '12px' },
   badgeGray: { backgroundColor: '#e7ebf3', color: '#4c669a', fontSize: '12px', padding: '2px 8px', borderRadius: '12px' },
   card: { backgroundColor: '#fff', border: '1px solid #e7ebf3', borderRadius: '12px', padding: '20px', marginBottom: '16px', boxShadow: '0 2px 4px rgba(0,0,0,0.02)' },
@@ -291,7 +315,7 @@ const s = {
   btnAccept: { backgroundColor: '#10b981', color: '#fff', border: 'none', padding: '10px', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer' },
   btnCancel: { backgroundColor: '#ef444410', color: '#ef4444', border: '1px solid #ef444420', padding: '10px', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer' },
   sectionHeaderRow: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' },
-  searchInput: { padding: '6px 12px', borderRadius: '8px', border: '1px solid #cfd7e7', fontSize: '14px' },
+  searchInput: { padding: '6px 12px', borderRadius: '8px', border: '1px solid #cfd7e7', fontSize: '14px', outline: 'none' },
   tableContainer: { backgroundColor: '#fff', border: '1px solid #e7ebf3', borderRadius: '12px', overflow: 'hidden', marginBottom: '24px' },
   table: { width: '100%', borderCollapse: 'collapse', textAlign: 'left' },
   thead: { backgroundColor: '#f8f9fc', borderBottom: '1px solid #e7ebf3' },
@@ -300,8 +324,8 @@ const s = {
   tr: { borderBottom: '1px solid #e7ebf3' },
   noteText: { fontStyle: 'italic', color: '#4c669a', fontSize: '12px', backgroundColor: '#f0f4ff', padding: '4px 8px', borderRadius: '4px' },
   statsGrid: { display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '16px' },
-  statCard: { backgroundColor: '#fff', padding: '16px', borderRadius: '12px', border: '1px solid #e7ebf3' },
+  statCard: { backgroundColor: '#fff', padding: '16px', borderRadius: '12px', border: '1px solid #e7ebf3', textAlign: 'center' }, // Añadido textAlign
   statLabel: { fontSize: '10px', fontWeight: 'bold', color: '#4c669a', margin: '0 0 4px 0' },
-  statVal: { fontSize: '20px', fontWeight: '900', margin: 0 },
+  statVal: { fontSize: '24px', fontWeight: '900', margin: 0 },
   emptyMsg: { color: '#4c669a', fontSize: '14px', fontStyle: 'italic' }
 };

@@ -1,21 +1,42 @@
 import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom"; // 1. IMPORTAR NAVEGACIÓN
 import "./index.css";
 
 export default function PatientAppointments() {
+  const navigate = useNavigate(); // Inicializar navegación
+
   const [appointments, setAppointments] = useState([]);
   const [form, setForm] = useState({ doctorType: "", date: "", time: "", reason: "" });
   const [receipt, setReceipt] = useState("");
   const [loading, setLoading] = useState(false);
 
-  const PACIENTE_ID = 1;
+  // 2. OBTENER DATOS REALES DEL USUARIO LOGUEADO
+  const [userData, setUserData] = useState({ id: null, nombre: "" });
 
   useEffect(() => {
-    fetchCitas();
-  }, []);
+    // Cuando el componente carga, sacamos el ID y Nombre del localStorage
+    const storedId = localStorage.getItem("userId");
+    const storedName = localStorage.getItem("userName");
 
-  const fetchCitas = async () => {
+    if (!storedId) {
+      // Si no hay ID (alguien intentó entrar directo por la URL sin loguearse), lo echamos al login
+      navigate("/login");
+      return;
+    }
+
+    setUserData({ id: storedId, nombre: storedName });
+    fetchCitas(storedId); // Pasamos el ID real a la función
+  }, [navigate]);
+
+  // 3. FUNCIÓN DE LOGOUT
+  const handleLogout = () => {
+    localStorage.clear(); // Borramos los datos de sesión
+    navigate("/login"); // Regresamos al login
+  };
+
+  const fetchCitas = async (pacienteId) => {
     try {
-      const response = await fetch(`http://localhost:3001/citas/${PACIENTE_ID}`);
+      const response = await fetch(`http://localhost:3001/citas/${pacienteId}`);
       const data = await response.json();
       setAppointments(data);
     } catch (error) {
@@ -32,15 +53,15 @@ export default function PatientAppointments() {
       return alert("Completa los campos obligatorios");
     }
 
-    if (
-      appointments.some(
-        (a) =>
-          a.fecha === date &&
-          a.hora === `${time}:00` &&
-          a.estado !== "CANCELADA"
-      )
-    ) {
-      return alert("Ya tienes una cita en esa fecha y hora.");
+    // 4. MEJORA EN VALIDACIÓN DE FECHAS
+    const isDuplicate = appointments.some((a) => {
+      // Convertimos la fecha de la DB al formato YYYY-MM-DD para poder compararla con 'date'
+      const dbDate = new Date(a.fecha).toISOString().split('T')[0];
+      return dbDate === date && a.hora === `${time}:00` && a.estado !== "CANCELADA";
+    });
+
+    if (isDuplicate) {
+      return alert("Ya tienes una cita agendada en esa fecha y hora exacta.");
     }
 
     try {
@@ -50,7 +71,7 @@ export default function PatientAppointments() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          paciente_id: PACIENTE_ID,
+          paciente_id: userData.id, // 5. USAMOS EL ID REAL AL GUARDAR
           doctorType,
           date,
           time,
@@ -63,9 +84,9 @@ export default function PatientAppointments() {
       if (data.success) {
         alert("¡Cita agendada correctamente!");
         setForm({ doctorType: "", date: "", time: "", reason: "" });
-        fetchCitas();
+        fetchCitas(userData.id); // Actualizamos la lista
       } else {
-        alert(data.message);
+        alert(data.message); // Si no hay doctores disponibles, el backend manda un mensaje
       }
     } catch (error) {
       alert("Error de conexión con el servidor");
@@ -86,10 +107,13 @@ export default function PatientAppointments() {
       const data = await response.json();
 
       if (data.success) {
-        fetchCitas();
+        fetchCitas(userData.id); // Actualizamos usando el ID real
+
+        // 6. FORMATEO DE FECHA PARA EL RECIBO
+        const formattedDate = new Date(appointment.fecha).toLocaleDateString();
 
         setReceipt(
-          `CANCELACIÓN CONFIRMADA\nEspecialidad: ${appointment.doctor_tipo}\nFecha: ${appointment.fecha}\nHora: ${appointment.hora}\nID: #${appointment.id}`
+          `CANCELACIÓN CONFIRMADA\nEspecialidad: ${appointment.doctor_tipo}\nFecha: ${formattedDate}\nHora: ${appointment.hora}\nID: #${appointment.id}`
         );
       }
     } catch (error) {
@@ -110,10 +134,15 @@ export default function PatientAppointments() {
           </div>
           <div className="flex items-center gap-4">
             <div className="text-right hidden sm:block">
-              <p className="text-sm font-semibold leading-none">Paciente Usuario</p>
-              <p className="text-xs text-slate-500 mt-1">ID: #{PACIENTE_ID}</p>
+              {/* 7. MOSTRAMOS EL NOMBRE REAL DEL PACIENTE */}
+              <p className="text-sm font-semibold leading-none">{userData.nombre || "Paciente"}</p>
+              <p className="text-xs text-slate-500 mt-1">ID: #{userData.id}</p>
             </div>
-            <button className="flex items-center gap-2 text-slate-600 hover:text-red-500 font-medium text-sm transition-colors">
+            {/* 8. BOTÓN LOGOUT ACTIVADO */}
+            <button
+              onClick={handleLogout}
+              className="flex items-center gap-2 text-slate-600 hover:text-red-500 font-medium text-sm transition-colors"
+            >
               <span className="material-symbols-outlined text-xl">logout</span> Logout
             </button>
           </div>
@@ -121,13 +150,12 @@ export default function PatientAppointments() {
       </header>
 
       <main className="py-10 px-4 max-w-7xl mx-auto space-y-10">
-        {/* Título */}
         <div>
           <h1 className="text-4xl font-black text-slate-900 tracking-tight">Panel del Paciente</h1>
           <p className="text-slate-500 mt-2 text-lg">Gestiona tus consultas médicas en tiempo real.</p>
         </div>
 
-        {/* Sección Formulario */}
+        {/* Sección Formulario (Se mantiene igual tu diseño HTML) */}
         <section className="bg-[#135bec]/5 rounded-2xl p-8 border border-[#135bec]/20 shadow-lg">
           <div className="flex flex-col xl:flex-row gap-10">
             <div className="xl:w-1/3">
@@ -209,48 +237,32 @@ export default function PatientAppointments() {
                     <tr key={apt.id} className="hover:bg-slate-50/50 transition-colors group">
                       <td className="px-8 py-6">
                         <div className="flex flex-col">
+                          {/* 9. CORRECCIÓN DE FECHA EN LA TABLA */}
                           <span className="font-bold text-slate-900">
-                            {new Date(apt.fecha_solicitada).toLocaleDateString()}
+                            {new Date(apt.fecha).toLocaleDateString()}
                           </span>
                           <span className="text-sm text-slate-500">
-                            {new Date(apt.fecha_solicitada).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                            {/* Mostramos la hora recortando los segundos de la DB (ej: 14:30:00 -> 14:30) */}
+                            {apt.hora.substring(0, 5)}
                           </span>
                         </div>
                       </td>
                       <td className="px-8 py-6">
-                        {apt.estado === "ACEPTADA" && (
-                          <span className="px-3 py-1 bg-slate-100 text-slate-600 rounded text-sm font-medium">
-                            {apt.nombre_doctor}
-                          </span>
-                        )}
-
-                        {apt.estado === "PENDIENTE" && (
-                          <span className="text-amber-500 text-sm italic">
-                            Esperando aceptación
-                          </span>
-                        )}
-
-                        {apt.estado === "CANCELADA" && (
-                          <span className="text-red-400 text-sm italic">
-                            Cita cancelada
-                          </span>
-                        )}
+                        <span className="text-slate-700 font-medium">
+                          {apt.doctor_tipo}
+                        </span>
                       </td>
 
                       <td className="px-8 py-6">
-                        <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-black ${apt.estado === 'PENDING' ? 'bg-amber-100 text-amber-700' :
-                          apt.estado === 'CANCELED' ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700'
+                        {/* 10. ESTILOS DE ESTADO REPARADOS PARA QUE COINCIDAN CON TU BACKEND EN ESPAÑOL */}
+                        <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-black ${apt.estado === 'PENDIENTE' ? 'bg-amber-100 text-amber-700' :
+                            apt.estado === 'CANCELADA' ? 'bg-red-100 text-red-700' :
+                              'bg-green-100 text-green-700'
                           }`}>
                           {apt.estado}
                         </span>
                       </td>
                       <td className="px-8 py-6 text-right">
-                        {apt.estado === "ACEPTADA" && apt.respuesta_doctor && (
-                          <div className="text-sm text-slate-600 max-w-xs text-right">
-                            {apt.respuesta_doctor}
-                          </div>
-                        )}
-
                         {apt.estado === "PENDIENTE" && (
                           <button
                             onClick={() => handleDelete(apt)}
@@ -260,12 +272,11 @@ export default function PatientAppointments() {
                           </button>
                         )}
                       </td>
-
                     </tr>
                   ))}
                   {appointments.length === 0 && (
                     <tr>
-                      <td colSpan="4" className="px-8 py-10 text-center text-slate-400">No hay citas registradas en la base de datos.</td>
+                      <td colSpan="4" className="px-8 py-10 text-center text-slate-400">No hay citas registradas.</td>
                     </tr>
                   )}
                 </tbody>

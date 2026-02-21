@@ -4,6 +4,8 @@ const express = require("express");
 const mysql = require("mysql2");
 const cors = require("cors");
 require("dotenv").config();
+const bcrypt = require("bcrypt");
+const saltRounds = 10;
 
 const app = express();
 
@@ -33,13 +35,14 @@ db.connect((err) => {
 // 🔐 SISTEMA DE AUTENTICACIÓN
 // ==========================================
 
-// LOGIN
+// LOGIN (ACTUALIZADO CON BCRYPT)
 app.post("/login", (req, res) => {
   const { email, password } = req.body;
 
-  const sql = "SELECT * FROM usuarios WHERE email = ? AND password = ?";
+  // 1. Buscar al usuario SOLO por su email
+  const sql = "SELECT * FROM usuarios WHERE email = ?";
 
-  db.query(sql, [email, password], (err, results) => {
+  db.query(sql, [email], async (err, results) => { // <-- Añadimos async al callback
     if (err) {
       console.error("Error en login:", err);
       return res.status(500).json({ error: "Error del servidor" });
@@ -48,13 +51,23 @@ app.post("/login", (req, res) => {
     if (results.length > 0) {
       const usuario = results[0];
 
-      res.json({
-        success: true,
-        role: usuario.rol.toLowerCase(),
-        id: usuario.id,
-        nombre: usuario.nombre
-      });
+      // 2. 🔐 COMPARAR LA CONTRASEÑA ESCRITA CON LA ENCRIPTADA
+      const match = await bcrypt.compare(password, usuario.password);
+
+      if (match) {
+        // Si coinciden, login exitoso
+        res.json({
+          success: true,
+          role: usuario.rol.toLowerCase(),
+          id: usuario.id,
+          nombre: usuario.nombre
+        });
+      } else {
+        // Si no coinciden
+        res.json({ success: false, message: "Credenciales incorrectas" });
+      }
     } else {
+      // Si el correo no existe
       res.json({ success: false, message: "Credenciales incorrectas" });
     }
   });
@@ -62,35 +75,44 @@ app.post("/login", (req, res) => {
 
 
 // REGISTRO PACIENTE
-app.post("/register", (req, res) => {
+app.post("/register", async (req, res) => { // <-- Añadimos async
   const { nombre_completo, telefono, tipo_sangre, fecha_nacimiento, email, password } = req.body;
 
   if (!nombre_completo || !email || !password) {
     return res.status(400).json({ success: false, message: "Faltan datos obligatorios" });
   }
 
-  const sqlUsuario = "INSERT INTO usuarios (nombre, email, password, rol) VALUES (?, ?, ?, 'PACIENTE')";
+  try {
+    // 🔐 ENCRIPTAR LA CONTRASEÑA ANTES DE GUARDARLA
+    const hashedPassword = await bcrypt.hash(password, saltRounds);
 
-  db.query(sqlUsuario, [nombre_completo, email, password], (err, resultUsuario) => {
-    if (err) {
-      console.error(err);
-      if (err.code === "ER_DUP_ENTRY")
-        return res.status(400).json({ success: false, message: "El correo ya existe" });
+    // Nota: Ahora insertamos hashedPassword en lugar de password
+    const sqlUsuario = "INSERT INTO usuarios (nombre, email, password, rol) VALUES (?, ?, ?, 'PACIENTE')";
 
-      return res.status(500).json({ success: false, message: "Error al registrar" });
-    }
+    db.query(sqlUsuario, [nombre_completo, email, hashedPassword], (err, resultUsuario) => {
+      if (err) {
+        console.error(err);
+        if (err.code === "ER_DUP_ENTRY")
+          return res.status(400).json({ success: false, message: "El correo ya existe" });
 
-    const nuevoId = resultUsuario.insertId;
+        return res.status(500).json({ success: false, message: "Error al registrar" });
+      }
 
-    const sqlPaciente = "INSERT INTO pacientes (id, fecha_nacimiento, telefono, tipo_sangre) VALUES (?, ?, ?, ?)";
+      const nuevoId = resultUsuario.insertId;
 
-    db.query(sqlPaciente, [nuevoId, fecha_nacimiento, telefono, tipo_sangre], (err2) => {
-      if (err2)
-        return res.status(500).json({ success: false, message: "Error al guardar datos médicos" });
+      const sqlPaciente = "INSERT INTO pacientes (id, fecha_nacimiento, telefono, tipo_sangre) VALUES (?, ?, ?, ?)";
 
-      res.json({ success: true, message: "Paciente registrado correctamente" });
+      db.query(sqlPaciente, [nuevoId, fecha_nacimiento, telefono, tipo_sangre], (err2) => {
+        if (err2)
+          return res.status(500).json({ success: false, message: "Error al guardar datos médicos" });
+
+        res.json({ success: true, message: "Paciente registrado correctamente" });
+      });
     });
-  });
+  } catch (error) {
+    console.error("Error al encriptar:", error);
+    res.status(500).json({ success: false, message: "Error interno del servidor" });
+  }
 });
 
 
@@ -227,6 +249,86 @@ app.put("/citas/:id/responder", (req, res) => {
   });
 });
 
+
+
+// ==========================================
+// 👑 PANEL DE ADMINISTRADOR
+// ==========================================
+
+// 1. Obtener Estadísticas Globales
+app.get("/admin/stats", async (req, res) => {
+  try {
+    const dbPromise = db.promise();
+    const [pacientes] = await dbPromise.query("SELECT COUNT(*) AS total FROM usuarios WHERE rol = 'PACIENTE'");
+    const [doctores] = await dbPromise.query("SELECT COUNT(*) AS total FROM doctores");
+    const [citasHoy] = await dbPromise.query("SELECT COUNT(*) AS total FROM citas WHERE DATE(fecha_solicitada) = CURDATE()");
+    const [pendientes] = await dbPromise.query("SELECT COUNT(*) AS total FROM citas WHERE estado = 'PENDIENTE'");
+
+    res.json({
+      pacientes: pacientes[0].total,
+      doctores: doctores[0].total,
+      citasHoy: citasHoy[0].total,
+      pendientes: pendientes[0].total
+    });
+  } catch (error) {
+    res.status(500).json({ error: "Error obteniendo estadísticas" });
+  }
+});
+
+// 2. Obtener Lista de Pacientes
+app.get("/admin/pacientes", (req, res) => {
+  db.query("SELECT id, nombre, email FROM usuarios WHERE rol = 'PACIENTE' ORDER BY id DESC", (err, results) => {
+    if (err) return res.status(500).json({ error: err });
+    res.json(results);
+  });
+});
+
+// 3. Obtener Lista de Doctores
+app.get("/admin/doctores", (req, res) => {
+  const sql = `
+    SELECT u.id, u.nombre, u.email, d.especialidad 
+    FROM usuarios u JOIN doctores d ON u.id = d.id 
+    WHERE u.rol = 'DOCTOR' ORDER BY u.id DESC
+  `;
+  db.query(sql, (err, results) => {
+    if (err) return res.status(500).json({ error: err });
+    res.json(results);
+  });
+});
+
+// 4. Obtener Todas las Citas (Global)
+app.get("/admin/citas", (req, res) => {
+  const sql = `
+    SELECT c.id, c.fecha_solicitada, c.estado, 
+           up.nombre AS paciente_nombre, ud.nombre AS doctor_nombre 
+    FROM citas c
+    JOIN usuarios up ON c.paciente_id = up.id
+    JOIN usuarios ud ON c.doctor_id = ud.id
+    ORDER BY c.fecha_solicitada DESC
+  `;
+  db.query(sql, (err, results) => {
+    if (err) return res.status(500).json({ error: err });
+    res.json(results);
+  });
+});
+
+// 5. Eliminar un Usuario (Paciente o Doctor)
+app.delete("/admin/usuarios/:id", (req, res) => {
+  // Gracias al "ON DELETE CASCADE" en tu base de datos, borrar al usuario
+  // borrará automáticamente sus citas y su perfil de paciente/doctor.
+  db.query("DELETE FROM usuarios WHERE id = ?", [req.params.id], (err) => {
+    if (err) return res.status(500).json({ error: err });
+    res.json({ success: true });
+  });
+});
+
+// 6. Eliminar una Cita permanentemente
+app.delete("/admin/citas/:id", (req, res) => {
+  db.query("DELETE FROM citas WHERE id = ?", [req.params.id], (err) => {
+    if (err) return res.status(500).json({ error: err });
+    res.json({ success: true });
+  });
+});
 
 const PORT = 3001;
 app.listen(PORT, () => {
