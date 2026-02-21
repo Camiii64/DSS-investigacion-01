@@ -1,7 +1,9 @@
 import { useState } from "react";
+import { useNavigate } from "react-router-dom"; // 1. IMPORTAMOS useNavigate
 
-function Register({ setShowRegister }) {
-  // --- LÓGICA DEL BACKEND (INTACTA) ---
+function Register() { // 2. QUITAMOS setShowRegister
+  const navigate = useNavigate(); // 3. INICIALIZAMOS EL HOOK DE NAVEGACIÓN
+
   const [formData, setFormData] = useState({
     nombre_completo: "",
     telefono: "",
@@ -12,7 +14,7 @@ function Register({ setShowRegister }) {
   });
 
   const [loading, setLoading] = useState(false);
-  const [showPassword, setShowPassword] = useState(false); // Estado para el ojito
+  const [showPassword, setShowPassword] = useState(false);
 
   const handleChange = (e) => {
     setFormData({
@@ -24,6 +26,7 @@ function Register({ setShowRegister }) {
   const handleRegister = async (e) => {
     e.preventDefault();
 
+    // Validación básica de campos vacíos
     if (
       !formData.nombre_completo ||
       !formData.telefono ||
@@ -33,6 +36,12 @@ function Register({ setShowRegister }) {
       !formData.password
     ) {
       alert("Todos los campos son obligatorios");
+      return;
+    }
+
+    // 4. VALIDACIÓN EXTRA: Que la contraseña no sea tan corta
+    if (formData.password.length < 8) {
+      alert("La contraseña debe tener al menos 8 caracteres.");
       return;
     }
 
@@ -47,16 +56,11 @@ function Register({ setShowRegister }) {
       const data = await response.json();
 
       if (response.ok && data.success) {
-        alert("Paciente registrado correctamente");
-        setFormData({
-          nombre_completo: "",
-          telefono: "",
-          tipo_sangre: "",
-          fecha_nacimiento: "",
-          email: "",
-          password: "",
-        });
-        setShowRegister(false);
+        alert("Paciente registrado correctamente. Por favor, inicia sesión.");
+
+        // 5. REDIRIGIMOS AL LOGIN EN VEZ DE USAR setShowRegister
+        navigate("/login");
+
       } else {
         alert(data.message || "Error al registrar");
       }
@@ -67,7 +71,6 @@ function Register({ setShowRegister }) {
       setLoading(false);
     }
   };
-
   // --- RENDERIZADO (NUEVO DISEÑO) ---
   return (
     <div className="flex min-h-screen w-full font-['Inter',sans-serif] bg-[#f6f6f8] dark:bg-[#101622]">
@@ -131,7 +134,7 @@ function Register({ setShowRegister }) {
               ¿Ya tienes cuenta?
             </span>
             <button
-              onClick={() => setShowRegister(false)}
+              onClick={() => navigate("/login")}
               className="px-5 py-2 text-sm font-semibold rounded-lg border border-[#135bec] text-[#135bec] bg-white hover:bg-[#135bec] hover:text-white transition-colors"
             >
               Inicia sesión
