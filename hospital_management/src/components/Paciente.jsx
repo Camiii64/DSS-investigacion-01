@@ -36,7 +36,7 @@ export default function PatientAppointments() {
 
   const fetchCitas = async (pacienteId) => {
     try {
-      const response = await fetch(`http://localhost:3001/citas/${pacienteId}`);
+      const response = await fetch(`https://api-mediconnect-2026-agh0gyhbdkh4achy.canadacentral-01.azurewebsites.net/citas/${pacienteId}`);
       const data = await response.json();
       setAppointments(data);
     } catch (error) {
@@ -67,7 +67,7 @@ export default function PatientAppointments() {
     try {
       setLoading(true);
 
-      const response = await fetch("http://localhost:3001/citas", {
+      const response = await fetch("https://api-mediconnect-2026-agh0gyhbdkh4achy.canadacentral-01.azurewebsites.net/citas", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -100,7 +100,7 @@ export default function PatientAppointments() {
 
     try {
       const response = await fetch(
-        `http://localhost:3001/citas/${appointment.id}/cancelar`,
+        `https://api-mediconnect-2026-agh0gyhbdkh4achy.canadacentral-01.azurewebsites.net/citas/${appointment.id}/cancelar`,
         { method: "PUT" }
       );
 
@@ -256,8 +256,8 @@ export default function PatientAppointments() {
                       <td className="px-8 py-6">
                         {/* 10. ESTILOS DE ESTADO REPARADOS PARA QUE COINCIDAN CON TU BACKEND EN ESPAÑOL */}
                         <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-black ${apt.estado === 'PENDIENTE' ? 'bg-amber-100 text-amber-700' :
-                            apt.estado === 'CANCELADA' ? 'bg-red-100 text-red-700' :
-                              'bg-green-100 text-green-700'
+                          apt.estado === 'CANCELADA' ? 'bg-red-100 text-red-700' :
+                            'bg-green-100 text-green-700'
                           }`}>
                           {apt.estado}
                         </span>

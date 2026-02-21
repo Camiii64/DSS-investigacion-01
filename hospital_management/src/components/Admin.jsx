@@ -21,10 +21,10 @@ export default function Admin() {
     const fetchAllData = async () => {
         try {
             const [resStats, resPacientes, resDoctores, resCitas] = await Promise.all([
-                fetch("http://localhost:3001/admin/stats"),
-                fetch("http://localhost:3001/admin/pacientes"),
-                fetch("http://localhost:3001/admin/doctores"),
-                fetch("http://localhost:3001/admin/citas")
+                fetch("https://api-mediconnect-2026.azurewebsites.net/admin/stats"),
+                fetch("https://api-mediconnect-2026.azurewebsites.net/admin/pacientes"),
+                fetch("https://api-mediconnect-2026.azurewebsites.net/admin/doctores"),
+                fetch("https://api-mediconnect-2026.azurewebsites.net/admin/citas")
             ]);
 
             setStats(await resStats.json());
@@ -44,7 +44,7 @@ export default function Admin() {
     const deleteUsuario = async (id) => {
         if (!window.confirm("¿Seguro que deseas eliminar a este usuario? Esto borrará sus citas asociadas.")) return;
         try {
-            const res = await fetch(`http://localhost:3001/admin/usuarios/${id}`, { method: "DELETE" });
+            const res = await fetch(`https://tu-app-mediconnect.azurewebsites.net/admin/usuarios/${id}`, { method: "DELETE" });
             if (res.ok) fetchAllData();
         } catch (error) {
             alert("Error eliminando usuario");
@@ -54,7 +54,7 @@ export default function Admin() {
     const deleteCita = async (id) => {
         if (!window.confirm("¿Deseas eliminar esta cita permanentemente?")) return;
         try {
-            const res = await fetch(`http://localhost:3001/admin/citas/${id}`, { method: "DELETE" });
+            const res = await fetch(`https://api-mediconnect-2026-agh0gyhbdkh4achy.canadacentral-01.azurewebsites.net/admin/citas/${id}`, { method: "DELETE" });
             if (res.ok) fetchAllData();
         } catch (error) {
             alert("Error eliminando cita");
@@ -64,7 +64,7 @@ export default function Admin() {
     const cancelarCita = async (id) => {
         if (!window.confirm("¿Deseas marcar esta cita como CANCELADA?")) return;
         try {
-            const res = await fetch(`http://localhost:3001/citas/${id}/cancelar`, { method: "PUT" });
+            const res = await fetch(`https://api-mediconnect-2026-agh0gyhbdkh4achy.canadacentral-01.azurewebsites.net/citas/${id}/cancelar`, { method: "PUT" });
             if (res.ok) fetchAllData();
         } catch (error) {
             alert("Error cancelando cita");
