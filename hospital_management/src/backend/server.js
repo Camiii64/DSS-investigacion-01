@@ -20,6 +20,8 @@ const db = mysql.createConnection({
   user: process.env.DB_USER,
   password: process.env.DB_PASSWORD,
   database: process.env.DB_NAME,
+  port: 3306,
+  ssl: { rejectUnauthorized: true } // 🔥 ESTO ES OBLIGATORIO PARA AZURE
 });
 
 db.connect((err) => {
@@ -330,7 +332,7 @@ app.delete("/admin/citas/:id", (req, res) => {
   });
 });
 
-const PORT = 3001;
+const PORT = process.env.PORT || 3001;
 app.listen(PORT, () => {
   console.log(`🚀 Servidor corriendo en http://localhost:${PORT}`);
 });

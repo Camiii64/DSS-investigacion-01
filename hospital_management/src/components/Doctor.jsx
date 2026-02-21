@@ -30,7 +30,7 @@ export default function DoctorPanel() {
   const fetchAppointments = async () => {
     try {
       const response = await fetch(
-        `http://localhost:3001/doctor/${DOCTOR_ID}/citas`
+        `https://api-mediconnect-2026-agh0gyhbdkh4achy.canadacentral-01.azurewebsites.net/doctor/${DOCTOR_ID}/citas`
       );
       const data = await response.json();
       setAppointments(data);
@@ -45,7 +45,7 @@ export default function DoctorPanel() {
 
     try {
       const response = await fetch(
-        `http://localhost:3001/citas/${id}/responder`,
+        `https://api-mediconnect-2026-agh0gyhbdkh4achy.canadacentral-01.azurewebsites.net/citas/${id}/responder`,
         {
           method: "PUT",
           headers: { "Content-Type": "application/json" },
@@ -71,7 +71,7 @@ export default function DoctorPanel() {
 
     try {
       const response = await fetch(
-        `http://localhost:3001/citas/${id}/responder`,
+        `https://api-mediconnect-2026-agh0gyhbdkh4achy.canadacentral-01.azurewebsites.net/citas/${id}/responder`,
         {
           method: "PUT",
           headers: { "Content-Type": "application/json" },
