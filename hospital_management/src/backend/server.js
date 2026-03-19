@@ -9,7 +9,7 @@ const saltRounds = 10;
 
 const app = express();
 
-app.use(cors());
+app.use(cors({origin: "http://localhost:5173"}));
 app.use(express.json());
 
 // ================================
@@ -21,7 +21,7 @@ const db = mysql.createConnection({
   password: process.env.DB_PASSWORD,
   database: process.env.DB_NAME,
   port: 3306,
-  ssl: { rejectUnauthorized: true } // 🔥 ESTO ES OBLIGATORIO PARA AZURE
+  //ssl: { rejectUnauthorized: true } // 🔥 ESTO ES OBLIGATORIO PARA AZURE
 });
 
 db.connect((err) => {
@@ -117,6 +117,129 @@ app.post("/register", async (req, res) => { // <-- Añadimos async
   }
 });
 
+//SECCION DE INGRESO DE USUARIOS 
+
+//CREAR ADMINISTRADOR
+app.post("/admin/create-admin", async (req, res) => {
+  const { nombre, email, password } = req.body;
+
+  if (!nombre || !email || !password) {
+    return res.status(400).json({ error: "Faltan datos" });
+  }
+
+  try {
+    const hashedPassword = await bcrypt.hash(password, saltRounds);
+
+    const sql = `
+      INSERT INTO usuarios (nombre, email, password, rol)
+      VALUES (?, ?, ?, 'ADMIN')
+    `;
+
+    db.query(sql, [nombre, email, hashedPassword], (err) => {
+      if (err) {
+        if (err.code === "ER_DUP_ENTRY") {
+          return res.status(400).json({ error: "El correo ya existe" });
+        }
+        return res.status(500).json({ error: err });
+      }
+
+      res.json({ success: true, message: "Admin creado correctamente" });
+    });
+
+  } catch (error) {
+    res.status(500).json({ error: "Error encriptando contraseña" });
+  }
+});
+
+//CREAR DOCTOR
+app.post("/admin/create-doctor", async (req, res) => {
+  const { nombre, email, password, especialidad, licencia } = req.body;
+
+  if (!nombre || !email || !password || !especialidad || !licencia) {
+    return res.status(400).json({ error: "Faltan datos" });
+  }
+
+  try {
+    const hashedPassword = await bcrypt.hash(password, saltRounds);
+
+    const sqlUsuario = `
+      INSERT INTO usuarios (nombre, email, password, rol)
+      VALUES (?, ?, ?, 'DOCTOR')
+    `;
+
+    db.query(sqlUsuario, [nombre, email, hashedPassword], (err, result) => {
+      if (err) {
+        if (err.code === "ER_DUP_ENTRY") {
+          return res.status(400).json({ error: "El correo ya existe" });
+        }
+        return res.status(500).json({ error: err });
+      }
+
+      const userId = result.insertId;
+
+      const sqlDoctor = `
+        INSERT INTO doctores (id, especialidad, licencia_medica)
+        VALUES (?, ?, ?)
+      `;
+
+      db.query(sqlDoctor, [userId, especialidad, licencia], (err2) => {
+        if (err2) {
+          return res.status(500).json({ error: err2 });
+        }
+
+        res.json({ success: true, message: "Doctor creado correctamente" });
+      });
+    });
+
+  } catch (error) {
+    res.status(500).json({ error: "Error encriptando contraseña" });
+  }
+});
+
+//CREAR PACIENTE (POR ADMIN)
+app.post("/admin/create-paciente", async (req, res) => {
+  const { nombre, email, password, fecha_nacimiento, telefono, tipo_sangre } = req.body;
+
+  if (!nombre || !email || !password) {
+    return res.status(400).json({ error: "Faltan datos" });
+  }
+
+  try {
+    const hashedPassword = await bcrypt.hash(password, saltRounds);
+
+    const sqlUsuario = `
+      INSERT INTO usuarios (nombre, email, password, rol)
+      VALUES (?, ?, ?, 'PACIENTE')
+    `;
+
+    db.query(sqlUsuario, [nombre, email, hashedPassword], (err, result) => {
+      if (err) {
+        if (err.code === "ER_DUP_ENTRY") {
+          return res.status(400).json({ error: "El correo ya existe" });
+        }
+        return res.status(500).json({ error: err });
+      }
+
+      const userId = result.insertId;
+
+      const sqlPaciente = `
+        INSERT INTO pacientes (id, fecha_nacimiento, telefono, tipo_sangre)
+        VALUES (?, ?, ?, ?)
+      `;
+
+      db.query(sqlPaciente, [userId, fecha_nacimiento, telefono, tipo_sangre], (err2) => {
+        if (err2) {
+          return res.status(500).json({ error: err2 });
+        }
+
+        res.json({ success: true, message: "Paciente creado correctamente" });
+      });
+    });
+
+  } catch (error) {
+    res.status(500).json({ error: "Error encriptando contraseña" });
+  }
+});
 
 // ==========================================
 // 📅 CITAS - PACIENTE

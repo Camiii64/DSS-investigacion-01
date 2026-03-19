@@ -47,7 +47,7 @@ function Register() { // 2. QUITAMOS setShowRegister
 
     try {
       setLoading(true);
-      const response = await fetch("https://api-mediconnect-2026-agh0gyhbdkh4achy.canadacentral-01.azurewebsites.net/register", {
+      const response = await fetch("http://localhost:3000/register", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(formData),
