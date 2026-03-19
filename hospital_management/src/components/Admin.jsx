@@ -632,18 +632,25 @@ export default function Admin() {
                     }
                   />
 
-                  <input
-                    className="w-full px-3 py-2 border rounded-lg dark:bg-slate-800"
-                    placeholder="Especialidad"
+                  <select
                     value={doctor.especialidad}
                     onChange={(e) =>
                       setDoctor({ ...doctor, especialidad: e.target.value })
                     }
-                  />
+                    className="w-full px-3 py-2 border rounded-lg dark:bg-slate-800"
+                    required
+                  >
+                    <option value="">Selecciona una especialidad</option>
+                    <option value="Medicina General">Medicina General</option>
+                    <option value="Cardiología">Cardiología</option>
+                    <option value="Pediatría">Pediatría</option>
+                    <option value="Dermatología">Dermatología</option>
+                    <option value="Ginecología">Ginecología</option>
+                  </select>
 
                   <input
                     className="w-full px-3 py-2 border rounded-lg dark:bg-slate-800"
-                    placeholder="Licencia Médica"
+                    placeholder="Licencia Médica MED-XXXX"
                     value={doctor.licencia}
                     onChange={(e) =>
                       setDoctor({ ...doctor, licencia: e.target.value })
@@ -725,14 +732,24 @@ export default function Admin() {
                     }
                   />
 
-                  <input
-                    className="w-full px-3 py-2 border rounded-lg dark:bg-slate-800"
-                    placeholder="Tipo de Sangre"
+                  <select
                     value={paciente.sangre}
                     onChange={(e) =>
                       setPaciente({ ...paciente, sangre: e.target.value })
                     }
-                  />
+                    className="w-full px-3 py-2 border rounded-lg dark:bg-slate-800"
+                    required
+                  >
+                    <option value="">Selecciona tu tipo de sangre</option>
+                    <option value="A+">A Rh positivo (A+)</option>
+                    <option value="A-">A Rh negativo (A-)</option>
+                    <option value="B+">B Rh positivo (B+)</option>
+                    <option value="B-">B Rh negativo (B-)</option>
+                    <option value="AB+">AB Rh positivo (AB+)</option>
+                    <option value="AB-">AB Rh negativo (AB-)</option>
+                    <option value="O+">O Rh positivo (O+)</option>
+                    <option value="O-">O Rh negativo (O-)</option>
+                  </select>
 
                   <button
                     onClick={createPaciente}
