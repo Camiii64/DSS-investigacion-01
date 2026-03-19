@@ -3,6 +3,7 @@ import Login from "./components/Login";
 import Register from "./components/Register";
 import Paciente from "./components/Paciente";
 import Doctor from "./components/Doctor";
+import Admin from "./components/Admin";
 import "./styles/Auth.css";
 import "./App.css";
 
@@ -17,6 +18,7 @@ function App() {
         <Route path="/register" element={<Register />} />
         <Route path="/paciente" element={<Paciente />} />
         <Route path="/doctor" element={<Doctor />} />
+        <Route path="/admin" element={<Admin />} />
 
       </Routes>
     </Router>

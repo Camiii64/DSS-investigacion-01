@@ -12,7 +12,7 @@ function Login({ setShowRegister }) {
     e.preventDefault();
 
     try {
-      const response = await fetch("http://localhost:3001/login", {
+      const response = await fetch("https://api-mediconnect-2026-agh0gyhbdkh4achy.canadacentral-01.azurewebsites.net/login", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -23,12 +23,18 @@ function Login({ setShowRegister }) {
       const data = await response.json();
 
       if (data.success) {
-        alert(`Bienvenido ${data.role}`);
-        // Aquí agregarás la navegación más adelante
+        // 1. GUARDAMOS LOS DATOS DEL USUARIO EN EL NAVEGADOR
+        localStorage.setItem("userId", data.id);
+        localStorage.setItem("userName", data.nombre);
+        localStorage.setItem("userRole", data.role);
+
+        alert(`Bienvenido ${data.nombre}`); // Mejor saludar por su nombre
+
+        // 2. HACEMOS LA REDIRECCIÓN
         if (data.role === "doctor") {
           navigate("/doctor");
         } else if (data.role === "admin") {
-          console.log("Ir a panel administrador");
+          navigate("/admin"); // <-- ¡Esta es la línea que hace la magia!
         } else {
           navigate("/paciente");
         }
