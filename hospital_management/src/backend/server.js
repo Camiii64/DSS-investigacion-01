@@ -1,4 +1,4 @@
-console.log("🔥 ESTE ES MI SERVIDOR REAL");
+console.log("🔥 SERVIDOR MEDICONNECT - LOGIN, REGISTRO Y GESTIÓN DE CITAS");
 
 const express = require("express");
 const mysql = require("mysql2");
@@ -10,7 +10,9 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
-// Conexión a MySQL
+// ================================
+// 🔌 CONEXIÓN A MYSQL
+// ================================
 const db = mysql.createConnection({
   host: process.env.DB_HOST,
   user: process.env.DB_USER,
@@ -20,83 +22,213 @@ const db = mysql.createConnection({
 
 db.connect((err) => {
   if (err) {
-    console.error("Error conectando a MySQL:", err);
+    console.error("❌ Error conectando a MySQL:", err);
   } else {
-    console.log("Conectado a MySQL");
+    console.log("✅ Conectado a MySQL exitosamente");
   }
 });
+
+
+// ==========================================
+// 🔐 SISTEMA DE AUTENTICACIÓN
+// ==========================================
 
 // LOGIN
 app.post("/login", (req, res) => {
   const { email, password } = req.body;
 
   const sql = "SELECT * FROM usuarios WHERE email = ? AND password = ?";
+
   db.query(sql, [email, password], (err, results) => {
-    if (err) return res.status(500).json({ error: err });
+    if (err) {
+      console.error("Error en login:", err);
+      return res.status(500).json({ error: "Error del servidor" });
+    }
 
     if (results.length > 0) {
+      const usuario = results[0];
+
       res.json({
         success: true,
-        role: results[0].rol,
+        role: usuario.rol.toLowerCase(),
+        id: usuario.id,
+        nombre: usuario.nombre
       });
     } else {
-      res.json({ success: false });
+      res.json({ success: false, message: "Credenciales incorrectas" });
     }
   });
 });
 
+
+// REGISTRO PACIENTE
 app.post("/register", (req, res) => {
-  console.log("BODY RECIBIDO:", req.body);
-  const {
-    nombre_completo,
-    dui,
-    telefono,
-    tipo_sangre,
-    fecha_nacimiento,
-    email,
-    password
-  } = req.body;
+  const { nombre_completo, telefono, tipo_sangre, fecha_nacimiento, email, password } = req.body;
 
-  // Insertar en usuarios
-  const sqlUsuario =
-    "INSERT INTO usuarios (email, password, rol) VALUES (?, ?, 'paciente')";
+  if (!nombre_completo || !email || !password) {
+    return res.status(400).json({ success: false, message: "Faltan datos obligatorios" });
+  }
 
-  db.query(sqlUsuario, [email, password], (err, resultUsuario) => {
+  const sqlUsuario = "INSERT INTO usuarios (nombre, email, password, rol) VALUES (?, ?, ?, 'PACIENTE')";
+
+  db.query(sqlUsuario, [nombre_completo, email, password], (err, resultUsuario) => {
     if (err) {
-      console.error("Error usuario:", err);
-      return res.status(500).json({ success: false, message: "Error al registrar usuario" });
+      console.error(err);
+      if (err.code === "ER_DUP_ENTRY")
+        return res.status(400).json({ success: false, message: "El correo ya existe" });
+
+      return res.status(500).json({ success: false, message: "Error al registrar" });
     }
 
-    const usuarioId = resultUsuario.insertId;
+    const nuevoId = resultUsuario.insertId;
 
-    // Insertar en pacientes
-    const sqlPaciente = `
-      INSERT INTO pacientes 
-      (usuario_id, nombre_completo, dui, telefono, tipo_sangre, fecha_nacimiento)
-      VALUES (?, ?, ?, ?, ?, ?)
+    const sqlPaciente = "INSERT INTO pacientes (id, fecha_nacimiento, telefono, tipo_sangre) VALUES (?, ?, ?, ?)";
+
+    db.query(sqlPaciente, [nuevoId, fecha_nacimiento, telefono, tipo_sangre], (err2) => {
+      if (err2)
+        return res.status(500).json({ success: false, message: "Error al guardar datos médicos" });
+
+      res.json({ success: true, message: "Paciente registrado correctamente" });
+    });
+  });
+});
+
+
+// ==========================================
+// 📅 CITAS - PACIENTE
+// ==========================================
+
+// OBTENER CITAS DEL PACIENTE
+app.get("/citas/:paciente_id", (req, res) => {
+  const { paciente_id } = req.params;
+
+  const sql = `
+    SELECT 
+      c.id,
+      d.especialidad AS doctor_tipo,
+      DATE(c.fecha_solicitada) AS fecha,
+      TIME(c.fecha_solicitada) AS hora,
+      c.estado
+    FROM citas c
+    JOIN doctores d ON c.doctor_id = d.id
+    WHERE c.paciente_id = ?
+    ORDER BY c.fecha_solicitada DESC
+  `;
+
+  db.query(sql, [paciente_id], (err, results) => {
+    if (err) {
+      console.error(err);
+      return res.status(500).json([]);
+    }
+    res.json(results);
+  });
+});
+
+
+// CREAR NUEVA CITA
+app.post("/citas", (req, res) => {
+  const { paciente_id, doctorType, date, time, reason } = req.body;
+
+  const sqlDoctor = "SELECT id FROM doctores WHERE especialidad = ? LIMIT 1";
+
+  db.query(sqlDoctor, [doctorType], (err, doctorResults) => {
+    if (err) return res.status(500).json({ error: err });
+
+    if (doctorResults.length === 0) {
+      return res.status(400).json({
+        success: false,
+        message: "No hay doctor disponible para esa especialidad"
+      });
+    }
+
+    const doctor_id = doctorResults[0].id;
+    const fecha_solicitada = `${date} ${time}:00`;
+
+    const sqlInsert = `
+      INSERT INTO citas (paciente_id, doctor_id, fecha_solicitada, motivo, estado)
+      VALUES (?, ?, ?, ?, 'PENDIENTE')
     `;
 
-    db.query(
-      sqlPaciente,
-      [usuarioId, nombre_completo, dui, telefono, tipo_sangre, fecha_nacimiento],
-      (err2) => {
-        if (err2) {
-          console.error("Error paciente:", err2);
-          return res.status(500).json({ success: false, message: "Error al registrar paciente" });
-        }
-
-        res.json({ success: true });
+    db.query(sqlInsert, [paciente_id, doctor_id, fecha_solicitada, reason], (err2, result) => {
+      if (err2) {
+        console.error(err2);
+        return res.status(500).json({ error: "Error al insertar cita" });
       }
-    );
+
+      res.json({ success: true, id: result.insertId });
+    });
   });
 });
 
-// PUERTO DEL SERVIDOR
-const PORT = 3001;
 
-app.listen(PORT, () => {
-  console.log(`Servidor corriendo en puerto ${PORT}`);
+// CANCELAR CITA
+app.put("/citas/:id/cancelar", (req, res) => {
+  const { id } = req.params;
+
+  const sql = "UPDATE citas SET estado = 'CANCELADA' WHERE id = ?";
+
+  db.query(sql, [id], (err) => {
+    if (err) return res.status(500).json({ error: err });
+
+    res.json({ success: true });
+  });
+});
+
+
+// ==========================================
+// 👨‍⚕️ CITAS - DOCTOR
+// ==========================================
+
+app.get("/doctor/:doctorId/citas", (req, res) => {
+  const { doctorId } = req.params;
+
+  const sql = `
+    SELECT 
+      c.id,
+      c.fecha_solicitada,
+      c.motivo,
+      c.estado,
+      c.respuesta_doctor,
+      u.nombre AS patientName
+    FROM citas c
+    JOIN doctores d ON c.doctor_id = d.id
+    JOIN pacientes p ON c.paciente_id = p.id
+    JOIN usuarios u ON p.id = u.id
+    WHERE d.especialidad = (
+        SELECT especialidad FROM doctores WHERE id = ?
+    )
+    ORDER BY c.fecha_solicitada ASC
+  `;
+
+  db.query(sql, [doctorId], (err, results) => {
+    if (err) {
+      console.error(err);
+      return res.status(500).json({ error: err });
+    }
+
+    console.log("CITAS ENCONTRADAS:", results); // ← AGREGA ESTO
+    res.json(results);
+  });
 });
 
 
 
+// RESPONDER CITA
+app.put("/citas/:id/responder", (req, res) => {
+  const { id } = req.params;
+  const { estado, respuesta_doctor } = req.body;
+
+  const sql = "UPDATE citas SET estado = ?, respuesta_doctor = ? WHERE id = ?";
+
+  db.query(sql, [estado, respuesta_doctor, id], (err) => {
+    if (err) return res.status(500).json({ error: err });
+
+    res.json({ success: true });
+  });
+});
+
+
+const PORT = 3001;
+app.listen(PORT, () => {
+  console.log(`🚀 Servidor corriendo en http://localhost:${PORT}`);
+});

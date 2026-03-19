@@ -2,7 +2,16 @@
 @tailwind components;
 @tailwind utilities;
 
-html, body, #root {
+html,
+body,
+#root {
   height: 100%;
   margin: 0;
+}
+
+
+/* Ocultar el icono de contraseña por defecto de Edge/Chrome */
+input[type="password"]::-ms-reveal,
+input[type="password"]::-ms-clear {
+  display: none;
 }
