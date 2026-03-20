@@ -1,5 +1,7 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
+import EditUsuarioModal from "./EditUsuarioModal";
+import EditDoctorModal from "./EditDoctorModal";
 
 export default function Admin() {
   const navigate = useNavigate();
@@ -9,6 +11,20 @@ export default function Admin() {
   const [messageAdmin, setMessageAdmin] = useState(null);
   const [messagePaciente, setMessagePaciente] = useState(null);
   const [messageDoctor, setMessageDoctor] = useState(null);
+  const [modalOpen, setModalOpen] = useState(false);
+  const [selectedUser, setSelectedUser] = useState(null);
+  const [doctorModal, setDoctorModal] = useState(false);
+  const [selectedDoctor, setSelectedDoctor] = useState(null);
+
+  const openEditModal = (usuario) => {
+    setSelectedUser(usuario);
+    setModalOpen(true);
+  };
+
+  const openDoctorModal = (doc) => {
+    setSelectedDoctor(doc);
+    setDoctorModal(true);
+  };
 
   const [stats, setStats] = useState({
     pacientes: 0,
@@ -404,6 +420,15 @@ export default function Admin() {
                             </td>
                             <td className="px-6 py-4 text-right">
                               <button
+                                onClick={() => openEditModal(paciente)}
+                                className="text-blue-600 bg-blue-50 hover:bg-blue-600 hover:text-white p-1.5 rounded-lg transition-all duration-200 mr-2"
+                                title="Editar"
+                              >
+                                <span className="material-symbols-outlined text-lg">
+                                  edit
+                                </span>
+                              </button>
+                              <button
                                 onClick={() => deleteUsuario(paciente.id)}
                                 className="text-red-600 bg-red-50 hover:bg-red-600 hover:text-white p-1.5 rounded-lg transition-all duration-200"
                                 title="Eliminar Paciente"
@@ -449,6 +474,14 @@ export default function Admin() {
                               {doctor.especialidad}
                             </td>
                             <td className="px-6 py-4 text-right">
+                              <button
+                                onClick={() => openDoctorModal(doctor)}
+                                className="text-blue-600 bg-blue-50 hover:bg-blue-600 hover:text-white p-1.5 rounded-lg mr-2"
+                              >
+                                <span className="material-symbols-outlined">
+                                  edit
+                                </span>
+                              </button>
                               <button
                                 onClick={() => deleteUsuario(doctor.id)}
                                 className="text-red-600 bg-red-50 hover:bg-red-600 hover:text-white p-1.5 rounded-lg transition-all duration-200"
@@ -819,6 +852,18 @@ export default function Admin() {
           </>
         )}
       </main>
+      <EditUsuarioModal
+        isOpen={modalOpen}
+        onClose={() => setModalOpen(false)}
+        usuario={selectedUser}
+        onUpdate={fetchAllData}
+      />
+      <EditDoctorModal
+        isOpen={doctorModal}
+        onClose={() => setDoctorModal(false)}
+        doctor={selectedDoctor}
+        onUpdate={fetchAllData}
+      />
     </div>
   );
 }

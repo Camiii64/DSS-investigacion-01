@@ -459,3 +459,68 @@ const PORT = process.env.PORT || 3001;
 app.listen(PORT, () => {
   console.log(`🚀 Servidor corriendo en http://localhost:${PORT}`);
 });
+
+// 7. EDITAR USUARIO (PACIENTE / DOCTOR / ADMIN)
+app.put("/admin/usuarios/:id", (req, res) => {
+  const { id } = req.params;
+  const { nombre, email } = req.body;
+
+  if (!nombre || !email) {
+    return res.status(400).json({ error: "Faltan datos" });
+  }
+
+  const sql = "UPDATE usuarios SET nombre = ?, email = ? WHERE id = ?";
+
+  db.query(sql, [nombre, email, id], (err) => {
+    if (err) {
+      if (err.code === "ER_DUP_ENTRY") {
+        return res.status(400).json({ error: "El correo ya existe" });
+      }
+      return res.status(500).json({ error: err });
+    }
+
+    res.json({ success: true, message: "Usuario actualizado correctamente" });
+  });
+});
+
+// 8. EDITAR DOCTOR COMPLETO
+app.put("/admin/doctores/:id", (req, res) => {
+  const { id } = req.params;
+  const { nombre, email, especialidad, licencia } = req.body;
+
+  if (!nombre || !email || !especialidad || !licencia) {
+    return res.status(400).json({ error: "Faltan datos" });
+  }
+
+  // Validación licencia
+  const licenciaRegex = /^MED-\d{4}$/;
+  if (!licenciaRegex.test(licencia)) {
+    return res.status(400).json({
+      error: "Formato de licencia inválido (MED-1234)",
+    });
+  }
+
+  // 1. Actualizar usuario
+  const sqlUsuario = "UPDATE usuarios SET nombre = ?, email = ? WHERE id = ?";
+
+  db.query(sqlUsuario, [nombre, email, id], (err) => {
+    if (err) {
+      if (err.code === "ER_DUP_ENTRY") {
+        return res.status(400).json({ error: "El correo ya existe" });
+      }
+      return res.status(500).json({ error: err });
+    }
+
+    // 2. Actualizar doctor
+    const sqlDoctor =
+      "UPDATE doctores SET especialidad = ?, licencia_medica = ? WHERE id = ?";
+
+    db.query(sqlDoctor, [especialidad, licencia, id], (err2) => {
+      if (err2) {
+        return res.status(500).json({ error: err2 });
+      }
+
+      res.json({ success: true, message: "Doctor actualizado correctamente" });
+    });
+  });
+});
