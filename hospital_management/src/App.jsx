@@ -4,6 +4,7 @@ import Register from "./components/Register";
 import Paciente from "./components/Paciente";
 import Doctor from "./components/Doctor";
 import Admin from "./components/Admin";
+import Emergencia from "./components/Emergencia";
 import "./styles/Auth.css";
 import "./App.css";
 
@@ -19,6 +20,7 @@ function App() {
         <Route path="/paciente" element={<Paciente />} />
         <Route path="/doctor" element={<Doctor />} />
         <Route path="/admin" element={<Admin />} />
+        <Route path="/emergencia" element={<Emergencia />} />
 
       </Routes>
     </Router>
