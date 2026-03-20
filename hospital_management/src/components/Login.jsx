@@ -7,6 +7,8 @@ function Login({ setShowRegister }) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false); // Estado para el ojito
+  const [showEmergencyModal, setShowEmergencyModal] = useState(false);
+  const [confirmStep, setConfirmStep] = useState(1);
 
   const handleLogin = async (e) => {
     e.preventDefault();
@@ -46,6 +48,52 @@ function Login({ setShowRegister }) {
       alert("Error al conectar con el servidor");
     }
   };
+
+const confirmEmergency = async () => {
+  if (confirmStep === 1) {
+    setConfirmStep(2);
+    return;
+  }
+
+  try {
+    const userId = localStorage.getItem("userId");
+
+    // Si no hay usuario, usamos un valor especial
+    const finalUserId = userId ? userId : null;
+
+    const response = await fetch("https://api-mediconnect-2026-agh0gyhbdkh4achy.canadacentral-01.azurewebsites.net/emergency-appointment", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        userId: finalUserId,
+        tipo: "emergencia",
+        prioridad: "alta",
+        fecha: new Date().toISOString(),
+        anonimo: finalUserId === null
+      }),
+    });
+
+    const data = await response.json();
+
+    if (data.success) {
+      if (finalUserId) {
+  alert("🚑 Cita de emergencia creada correctamente.");
+} else {
+  alert("🚑 Cita de emergencia creada. Dirígete al hospital inmediatamente.");
+}
+      navigate("/paciente");
+    } else {
+      alert("Error al crear la cita de emergencia.");
+    }
+  } catch (error) {
+    console.error(error);
+    alert("Error al conectar con el servidor.");
+  }
+
+  setShowEmergencyModal(false);
+};
 
   return (
     <div className="flex min-h-screen w-full font-['Inter',sans-serif] bg-[#f6f6f8] dark:bg-[#101622]">
@@ -98,7 +146,46 @@ function Login({ setShowRegister }) {
               Secure Encryption
             </span>
           </div>
+                      {showEmergencyModal && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+              <div className="bg-white dark:bg-[#101622] p-8 rounded-2xl shadow-xl max-w-md w-full text-center">
+
+                <h2 className="text-xl font-bold mb-4 text-red-600">
+                  🚑 Emergencia Médica
+                </h2>
+
+                {confirmStep === 1 ? (
+                  <p className="text-gray-700 dark:text-gray-300 mb-6">
+                    ¿Deseas solicitar una cita de emergencia?
+                  </p>
+                ) : (
+                  <p className="text-gray-700 dark:text-gray-300 mb-6">
+                    ⚠️ Esta acción enviará una alerta a nuestro equipo de emergencia
+                    <br />
+                    ¿Confirmas continuar?
+                  </p>
+                )}
+
+                <div className="flex gap-4 justify-center">
+                  <button
+                    onClick={() => setShowEmergencyModal(false)}
+                    className="px-4 py-2 rounded-lg bg-gray-300 hover:bg-gray-400 text-black"
+                  >
+                    Cancelar
+                  </button>
+
+                  <button
+                    onClick={confirmEmergency}
+                    className="px-4 py-2 rounded-lg bg-red-600 hover:bg-red-700 text-white font-semibold"
+                  >
+                    {confirmStep === 1 ? "Continuar" : "Confirmar"}
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
+
       </div>
 
       {/* PANEL DERECHO (FORMULARIO) */}
@@ -211,6 +298,17 @@ function Login({ setShowRegister }) {
               className="w-full flex justify-center items-center py-4 px-6 border border-transparent rounded-xl shadow-lg text-base font-bold text-white bg-[#135bec] hover:bg-[#135bec]/90 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#135bec] transition-all"
             >
               Sign In to Dashboard
+            </button>
+            {/* BOTÓN DE EMERGENCIA */}
+            <button
+              type="button"
+              onClick={() => {
+                setShowEmergencyModal(true);
+                setConfirmStep(1);
+              }}
+              className="w-full mt-6 flex justify-center items-center py-4 px-6 border border-red-600 rounded-xl shadow-lg text-base font-bold text-white bg-red-600 hover:bg-red-700 transition-all"
+            >
+              🚑 Solicitar Cita de Emergencia
             </button>
           </form>
 
