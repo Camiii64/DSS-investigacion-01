@@ -23,14 +23,13 @@ jobs:
       - name: Install backend dependencies
         run: |
           cd src/backend
-          npm install --omit=dev
+          npm install
 
       - name: Upload artifact for deployment job
         uses: actions/upload-artifact@v4
         with:
           name: node-app
           path: src/backend
-          include-hidden-files: true
 
   deploy:
     runs-on: ubuntu-latest
