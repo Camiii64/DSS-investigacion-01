@@ -411,7 +411,7 @@ export default function Admin() {
                 </div>
 
                 {/* Stats Summary */}
-                <div className="grid grid-cols-4 gap-4 mb-8">
+                <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
                     <div className="bg-white rounded-2xl p-5 border border-slate-200/80 shadow-sm">
                         <p className="text-xs font-medium text-slate-500 uppercase tracking-wider">Total Pacientes</p>
                         <p className="text-2xl font-extrabold text-slate-900 mt-1">{stats.pacientes}</p>
