@@ -20,10 +20,10 @@ jobs:
 
       - name: Install backend dependencies and package
         run: |
-          cd src/backend
+          cd hospital_management/src/backend
           npm install
-          cd ../..
-          zip -r node-app.zip src/backend/
+          cd ../../..
+          zip -r node-app.zip hospital_management/src/backend/
 
       - name: Upload artifact for deployment job
         uses: actions/upload-artifact@v4
@@ -47,7 +47,7 @@ jobs:
         run: |
           unzip node-app.zip
           shopt -s dotglob
-          cp -r src/backend/* .
+          cp -r hospital_management/src/backend/* .
           ls node_modules | head -5
 
       - name: Login to Azure
