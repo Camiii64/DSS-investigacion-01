@@ -14,6 +14,9 @@ dist-ssr
 
 # Variables de entorno con credenciales — nunca subir al repo
 src/backend/.env
+src/backend/.env.azure
+src/backend/.env.azure.bak
+src/backend/.env.*
 .env.local
 
 # Editor directories and files

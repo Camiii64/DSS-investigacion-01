@@ -9,9 +9,67 @@ body,
   margin: 0;
 }
 
+html {
+  scroll-behavior: smooth;
+}
 
 /* Ocultar el icono de contraseña por defecto de Edge/Chrome */
 input[type="password"]::-ms-reveal,
 input[type="password"]::-ms-clear {
   display: none;
 }
+
+/* ====== LANDING — utilidades ====== */
+.text-balance { text-wrap: balance; }
+.text-pretty { text-wrap: pretty; }
+
+/* Striped image placeholder */
+.ph-stripe {
+  background-image: repeating-linear-gradient(
+    135deg,
+    rgba(15,23,42,0.06) 0px,
+    rgba(15,23,42,0.06) 1px,
+    transparent 1px,
+    transparent 9px
+  );
+}
+.ph-stripe-dark {
+  background-image: repeating-linear-gradient(
+    135deg,
+    rgba(255,255,255,0.06) 0px,
+    rgba(255,255,255,0.06) 1px,
+    transparent 1px,
+    transparent 9px
+  );
+}
+.ph-stripe-red {
+  background-image: repeating-linear-gradient(
+    135deg,
+    rgba(220,38,38,0.10) 0px,
+    rgba(220,38,38,0.10) 1px,
+    transparent 1px,
+    transparent 9px
+  );
+}
+
+/* Marquee for specialties strip */
+@keyframes marquee {
+  from { transform: translateX(0); }
+  to { transform: translateX(-50%); }
+}
+.marquee-track { animation: marquee 38s linear infinite; }
+.marquee-track.fast { animation-duration: 22s; }
+
+/* Subtle pulse for emergency CTA */
+@keyframes softPulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(220,38,38, .35); }
+  50%      { box-shadow: 0 0 0 14px rgba(220,38,38, 0); }
+}
+.pulse-ring { animation: softPulse 2.4s ease-out infinite; }
+
+/* Card hover */
+.card-hover { transition: transform .35s cubic-bezier(.2,.8,.2,1), box-shadow .35s; }
+.card-hover:hover { transform: translateY(-3px); }
+
+/* Selection */
+::selection { background: #DC2626; color: #fff; }
