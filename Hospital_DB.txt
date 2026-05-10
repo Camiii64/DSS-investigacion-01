@@ -12,6 +12,8 @@ CREATE TABLE usuarios (
     password VARCHAR(255) NOT NULL,
     rol ENUM('ADMIN','DOCTOR','PACIENTE') NOT NULL,
     estado BOOLEAN DEFAULT TRUE,
+    codigo_emergencia VARCHAR(4) UNIQUE NULL,
+    codigo_emergencia_usos INT NOT NULL DEFAULT 0,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 

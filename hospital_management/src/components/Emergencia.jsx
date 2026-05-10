@@ -290,36 +290,50 @@ export default function Emergencia() {
                   </div>
                 </div>
 
-                {/* Credenciales */}
-                {result.esNuevo && result.emailTemp && (
-                  <div className="bg-slate-50 border border-slate-200 rounded-2xl p-5 mb-5">
+                {/* Código de emergencia */}
+                {result.esNuevo && result.codigoEmergencia && (
+                  <div className="bg-gradient-to-br from-red-50 to-amber-50 border-2 border-red-200 rounded-2xl p-5 mb-5">
                     <div className="flex items-center gap-2 mb-3">
-                      <span className="material-symbols-outlined text-slate-500 text-base">key</span>
-                      <p className="text-xs font-bold text-slate-600 uppercase tracking-widest">Credenciales generadas</p>
+                      <span className="material-symbols-outlined text-red-600 text-base">key</span>
+                      <p className="text-xs font-extrabold text-red-700 uppercase tracking-widest">Tu código de acceso</p>
                     </div>
-                    <div className="space-y-2">
-                      <div className="flex items-center gap-2 bg-white border border-slate-200 rounded-xl px-3 py-2.5">
-                        <span className="material-symbols-outlined text-slate-400 text-sm">email</span>
-                        <span className="font-mono text-xs text-slate-700 flex-1 truncate">{result.emailTemp}</span>
-                        <button onClick={() => navigator.clipboard.writeText(result.emailTemp)} className="text-[#006B76] text-xs font-bold shrink-0 hover:text-[#004F5A]">Copiar</button>
-                      </div>
-                      <div className="flex items-center gap-2 bg-white border border-slate-200 rounded-xl px-3 py-2.5">
-                        <span className="material-symbols-outlined text-slate-400 text-sm">lock</span>
-                        <span className="font-mono text-xs text-slate-700 flex-1">{result.passwordTemp}</span>
-                        <button onClick={() => navigator.clipboard.writeText(result.passwordTemp)} className="text-[#006B76] text-xs font-bold shrink-0 hover:text-[#004F5A]">Copiar</button>
-                      </div>
+                    <div className="flex items-center justify-center gap-2 my-4">
+                      {result.codigoEmergencia.split("").map((d, i) => (
+                        <div key={i} className="w-14 h-16 rounded-xl bg-white border-2 border-red-300 flex items-center justify-center shadow-sm">
+                          <span className="text-3xl font-black text-red-700 font-mono">{d}</span>
+                        </div>
+                      ))}
                     </div>
-                    <p className="text-[11px] text-slate-400 mt-3 leading-relaxed">Guarda estas credenciales para acceder a tu perfil y ver el historial de tus citas.</p>
+                    <button
+                      onClick={() => navigator.clipboard.writeText(result.codigoEmergencia)}
+                      className="w-full bg-white border border-red-200 text-red-700 hover:bg-red-50 py-2 rounded-lg font-bold text-xs flex items-center justify-center gap-1.5 transition-colors mb-3"
+                    >
+                      <span className="material-symbols-outlined text-sm">content_copy</span>
+                      Copiar código
+                    </button>
+                    <p className="text-[11px] text-slate-600 leading-relaxed text-center">
+                      <span className="font-bold">Guarda este código.</span> Si pierdes la sesión, podrás volver a entrar a tu perfil ingresándolo en el login.
+                      <span className="block mt-1 text-slate-500">Por seguridad solo puede usarse <span className="font-bold">3 veces</span>.</span>
+                    </p>
                   </div>
                 )}
 
                 <div className="flex flex-col gap-3">
                   <button
-                    onClick={() => navigate("/login")}
+                    onClick={() => {
+                      // Auto-login: guardar sesión y entrar al perfil
+                      localStorage.setItem("userId", result.pacienteId);
+                      localStorage.setItem("userName", result.pacienteNombre || "Paciente");
+                      localStorage.setItem("userRole", "paciente");
+                      if (result.codigoEmergencia) {
+                        localStorage.setItem("codigoEmergencia", result.codigoEmergencia);
+                      }
+                      navigate("/paciente");
+                    }}
                     className="w-full bg-[#006B76] hover:bg-[#004F5A] text-white py-3.5 rounded-xl font-bold text-sm flex items-center justify-center gap-2 transition-colors shadow-md shadow-[#84D4D9]/40"
                   >
                     <span className="material-symbols-outlined text-base">login</span>
-                    Ir al Login
+                    Entrar a mi perfil
                   </button>
                   <button
                     onClick={() => { setResult(null); setForm({ nombre: "", especialidad: "", motivo: "", email: "" }); }}

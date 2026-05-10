@@ -391,6 +391,19 @@ app.delete("/admin/citas/:id", (req, res) => {
   });
 });
 
+// Helper: genera un código único de 4 dígitos para acceso de emergencia
+async function generarCodigoEmergenciaUnico() {
+  for (let intento = 0; intento < 20; intento++) {
+    const codigo = String(Math.floor(1000 + Math.random() * 9000));
+    const [rows] = await dbPromise.query(
+      "SELECT id FROM usuarios WHERE codigo_emergencia = ? LIMIT 1",
+      [codigo]
+    );
+    if (rows.length === 0) return codigo;
+  }
+  throw new Error("No se pudo generar un código de emergencia único");
+}
+
 // EMERGENCIA PÚBLICA — paciente sin cuenta pide atención desde la app
 app.post("/emergencia", async (req, res) => {
   const { nombre, especialidad, motivo, email } = req.body;
@@ -400,36 +413,40 @@ app.post("/emergencia", async (req, res) => {
 
   try {
     let pacienteId = null;
+    let pacienteNombre = nombre;
     let esNuevo = false;
     let emailUsado = email || null;
-    let passwordTemp = null;
+    let codigoEmergencia = null;
 
     // Si mandó email, buscar si ya existe la cuenta
     if (email) {
       const [existing] = await dbPromise.query(
-        "SELECT id FROM usuarios WHERE email = ? AND rol = 'PACIENTE' LIMIT 1", [email]
+        "SELECT id, nombre FROM usuarios WHERE email = ? AND rol = 'PACIENTE' LIMIT 1", [email]
       );
       if (existing.length > 0) {
         pacienteId = existing[0].id;
+        pacienteNombre = existing[0].nombre;
       }
     }
 
-    // Si no existe, crear cuenta temporal
+    // Si no existe, crear cuenta temporal + código de 4 dígitos
     let conn;
     if (!pacienteId) {
       esNuevo = true;
       const ts = Date.now();
       emailUsado = email || `temp_${ts}@mediconnect.tmp`;
+      // Password aleatorio interno (el usuario nunca lo verá: entra por código)
       const chars = "ABCDEFGHJKMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789";
-      passwordTemp = Array.from({ length: 8 }, () => chars[Math.floor(Math.random() * chars.length)]).join("");
-      const hashedPassword = await bcrypt.hash(passwordTemp, saltRounds);
+      const passwordInterno = Array.from({ length: 16 }, () => chars[Math.floor(Math.random() * chars.length)]).join("");
+      const hashedPassword = await bcrypt.hash(passwordInterno, saltRounds);
+      codigoEmergencia = await generarCodigoEmergenciaUnico();
 
       conn = await dbPromise.getConnection();
       await conn.beginTransaction();
       try {
         const [rU] = await conn.query(
-          "INSERT INTO usuarios (nombre, email, password, rol) VALUES (?, ?, ?, 'PACIENTE')",
-          [nombre, emailUsado, hashedPassword]
+          "INSERT INTO usuarios (nombre, email, password, rol, codigo_emergencia) VALUES (?, ?, ?, 'PACIENTE', ?)",
+          [nombre, emailUsado, hashedPassword, codigoEmergencia]
         );
         pacienteId = rU.insertId;
         await conn.query(
@@ -465,9 +482,64 @@ app.post("/emergencia", async (req, res) => {
       [pacienteId, doctorId, fechaAhora, motivo]
     );
 
-    res.json({ success: true, pacienteId, doctorNombre, emailTemp: esNuevo ? emailUsado : null, passwordTemp, esNuevo });
+    res.json({
+      success: true,
+      pacienteId,
+      pacienteNombre,
+      doctorNombre,
+      codigoEmergencia, // null si era cuenta existente
+      esNuevo
+    });
   } catch (error) {
     console.error("Error en emergencia pública:", error);
+    res.status(500).json({ success: false, message: "Error interno del servidor" });
+  }
+});
+
+// LOGIN POR CÓDIGO DE EMERGENCIA (límite: 3 usos)
+const MAX_USOS_CODIGO = 3;
+
+app.post("/login-codigo", async (req, res) => {
+  const { codigo } = req.body;
+  if (!codigo || !/^\d{4}$/.test(String(codigo))) {
+    return res.status(400).json({ success: false, message: "Código inválido" });
+  }
+  try {
+    const [rows] = await dbPromise.query(
+      "SELECT id, nombre, rol, codigo_emergencia_usos FROM usuarios WHERE codigo_emergencia = ? AND rol = 'PACIENTE' LIMIT 1",
+      [String(codigo)]
+    );
+    if (rows.length === 0) {
+      return res.json({ success: false, message: "Código no válido o expirado" });
+    }
+    const u = rows[0];
+    const nuevosUsos = (u.codigo_emergencia_usos || 0) + 1;
+
+    if (nuevosUsos >= MAX_USOS_CODIGO) {
+      // Último uso permitido: invalida el código y resetea contador
+      await dbPromise.query(
+        "UPDATE usuarios SET codigo_emergencia = NULL, codigo_emergencia_usos = 0 WHERE id = ?",
+        [u.id]
+      );
+    } else {
+      // Solo incrementa el contador
+      await dbPromise.query(
+        "UPDATE usuarios SET codigo_emergencia_usos = ? WHERE id = ?",
+        [nuevosUsos, u.id]
+      );
+    }
+
+    const usosRestantes = Math.max(0, MAX_USOS_CODIGO - nuevosUsos);
+    res.json({
+      success: true,
+      id: u.id,
+      nombre: u.nombre,
+      role: u.rol.toLowerCase(),
+      usosRestantes,
+      codigoExpirado: usosRestantes === 0
+    });
+  } catch (error) {
+    console.error("Error en login por código:", error);
     res.status(500).json({ success: false, message: "Error interno del servidor" });
   }
 });
