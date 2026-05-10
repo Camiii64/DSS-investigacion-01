@@ -10,6 +10,8 @@ function Login() {
   const [showPassword, setShowPassword] = useState(false);
   const [splash, setSplash] = useState(null); // { nombre, role }
   const [error, setError] = useState("");
+  const [modo, setModo] = useState("normal"); // "normal" | "codigo"
+  const [codigo, setCodigo] = useState("");
 
   useEffect(() => {
     if (!splash) return;
@@ -45,6 +47,46 @@ function Login() {
         setSplash({ nombre: data.nombre, role: data.role });
       } else {
         setError("Credenciales incorrectas. Verifica tu correo y contraseña.");
+      }
+    } catch {
+      setError("Error al conectar con el servidor. Inténtalo de nuevo.");
+    }
+  };
+
+  const handleLoginCodigo = async (e) => {
+    e.preventDefault();
+    setError("");
+
+    if (!/^\d{4}$/.test(codigo)) {
+      setError("El código debe tener 4 dígitos.");
+      return;
+    }
+
+    try {
+      const response = await fetch(`${API_URL}/login-codigo`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ codigo }),
+      });
+
+      if (!response.ok) throw new Error(`Error del servidor: ${response.status}`);
+
+      const data = await response.json();
+
+      if (data.success) {
+        localStorage.setItem("userId", data.id);
+        localStorage.setItem("userName", data.nombre);
+        localStorage.setItem("userRole", data.role);
+        if (data.codigoExpirado) {
+          localStorage.removeItem("codigoEmergencia");
+          localStorage.setItem("codigoExpirado", "1");
+        } else {
+          localStorage.setItem("codigoEmergencia", codigo);
+          localStorage.setItem("usosRestantes", String(data.usosRestantes));
+        }
+        setSplash({ nombre: data.nombre, role: data.role });
+      } else {
+        setError(data.message || "Código no válido o expirado.");
       }
     } catch {
       setError("Error al conectar con el servidor. Inténtalo de nuevo.");
@@ -141,17 +183,101 @@ function Login() {
         </div>
 
         {/* PANEL DERECHO */}
-        <div className="flex flex-col w-full lg:w-1/2 bg-white dark:bg-[#001F23] justify-center px-8 sm:px-16 lg:px-24 py-12">
+        <div className="flex flex-col w-full lg:w-1/2 bg-white dark:bg-[#001F23] justify-center px-8 sm:px-16 lg:px-24 py-12 relative">
+          {/* BOTÓN VOLVER AL INICIO */}
+          <button
+            type="button"
+            onClick={() => navigate("/")}
+            className="absolute top-6 right-6 lg:top-8 lg:right-8 flex items-center gap-1.5 text-sm font-semibold text-slate-600 hover:text-[#006B76] dark:text-gray-300 dark:hover:text-white transition-colors group"
+          >
+            <span className="material-symbols-outlined text-[18px] group-hover:-translate-x-0.5 transition-transform">
+              arrow_back
+            </span>
+            Volver al inicio
+          </button>
+
           <div className="max-w-md w-full mx-auto">
-            <div className="mb-10 text-center lg:text-left">
+            <div className="mb-8 text-center lg:text-left">
               <h2 className="text-3xl font-bold text-slate-900 dark:text-white mb-3">
-                Bienvenido
+                {modo === "codigo" ? "Acceso de emergencia" : "Bienvenido"}
               </h2>
               <p className="text-slate-500 dark:text-gray-400">
-                Ingresa tus credenciales para acceder a tu panel.
+                {modo === "codigo"
+                  ? "Ingresa tu código de 4 dígitos para recuperar tu sesión."
+                  : "Ingresa tus credenciales para acceder a tu panel."}
               </p>
             </div>
 
+            {/* TABS NORMAL / CÓDIGO */}
+            <div className="flex gap-2 mb-6 p-1 bg-slate-100 dark:bg-slate-800 rounded-xl">
+              <button
+                type="button"
+                onClick={() => { setModo("normal"); setError(""); }}
+                className={`flex-1 py-2 px-3 rounded-lg text-sm font-bold transition-all ${
+                  modo === "normal"
+                    ? "bg-white dark:bg-slate-700 text-[#006B76] dark:text-white shadow-sm"
+                    : "text-slate-500 dark:text-slate-400 hover:text-slate-700"
+                }`}
+              >
+                Normal
+              </button>
+              <button
+                type="button"
+                onClick={() => { setModo("codigo"); setError(""); }}
+                className={`flex-1 py-2 px-3 rounded-lg text-sm font-bold transition-all flex items-center justify-center gap-1.5 ${
+                  modo === "codigo"
+                    ? "bg-white dark:bg-slate-700 text-red-600 shadow-sm"
+                    : "text-slate-500 dark:text-slate-400 hover:text-slate-700"
+                }`}
+              >
+                <span className="material-symbols-outlined text-[16px]">emergency</span>
+                Código de emergencia
+              </button>
+            </div>
+
+            {modo === "codigo" ? (
+              <form onSubmit={handleLoginCodigo} className="space-y-6">
+                <div>
+                  <label className="block text-sm font-semibold text-slate-800 dark:text-gray-200 mb-2" htmlFor="codigo">
+                    Código de 4 dígitos
+                  </label>
+                  <input
+                    id="codigo"
+                    type="text"
+                    inputMode="numeric"
+                    maxLength={4}
+                    className="block w-full h-16 text-center text-3xl font-black tracking-[0.5em] bg-white dark:bg-slate-900 border-2 border-red-200 rounded-xl focus:ring-2 focus:ring-red-200 focus:border-red-400 transition-all text-red-700 font-mono"
+                    placeholder="••••"
+                    required
+                    value={codigo}
+                    onChange={(e) => {
+                      const v = e.target.value.replace(/\D/g, "").slice(0, 4);
+                      setCodigo(v);
+                      setError("");
+                    }}
+                  />
+                  <p className="text-xs text-slate-500 mt-2">
+                    Es el código que recibiste al solicitar atención de emergencia.
+                    <span className="block mt-1 text-slate-400">Por seguridad, solo puede usarse 3 veces.</span>
+                  </p>
+                </div>
+
+                {error && (
+                  <div className="px-4 py-3 rounded-xl bg-red-50 border border-red-200 text-red-700 text-sm font-semibold flex items-center gap-2">
+                    <span className="material-symbols-outlined" style={{ fontSize: "18px" }}>error</span>
+                    {error}
+                  </div>
+                )}
+
+                <button
+                  type="submit"
+                  className="w-full flex justify-center items-center py-4 px-6 rounded-xl shadow-lg text-base font-bold text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 transition-all gap-2"
+                >
+                  <span className="material-symbols-outlined">login</span>
+                  Acceder con código
+                </button>
+              </form>
+            ) : (
             <form onSubmit={handleLogin} className="space-y-6">
               {/* INPUT EMAIL */}
               <div>
@@ -235,6 +361,7 @@ function Login() {
                 Iniciar Sesión
               </button>
             </form>
+            )}
 
             <div className="mt-8 mb-2 text-center w-full">
               <p className="text-sm text-gray-500 dark:text-gray-400 w-full text-center lg:text-left">
