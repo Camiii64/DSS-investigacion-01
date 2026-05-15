@@ -65,6 +65,20 @@ export default function Emergencia() {
     document.head.appendChild(script);
   }, []);
 
+  // ── Reverse geocoding helper (reutilizable) ────────────────────────────
+  const reverseGeocode = async (lat, lon) => {
+    try {
+      const r = await fetch(
+        `https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lon}&format=json`,
+        { headers: { "Accept-Language": "es" } }
+      );
+      const d = await r.json();
+      return d.display_name || `${lat.toFixed(6)}, ${lon.toFixed(6)}`;
+    } catch {
+      return `${lat.toFixed(6)}, ${lon.toFixed(6)}`;
+    }
+  };
+
   // ── Construir o actualizar el mapa de ambulancia ────────────────────────
   const buildAmbuMap = (lat, lon, layerKey) => {
     const L = window.L;
@@ -74,7 +88,6 @@ export default function Emergencia() {
     const tl  = TILE_LAYERS[key];
 
     if (!ambuLeafRef.current) {
-      // Primera vez: crear mapa
       ambuLeafRef.current = L.map(ambuMapRef.current, {
         zoomControl: true,
         attributionControl: true,
@@ -92,21 +105,21 @@ export default function Emergencia() {
       maxZoom: 19,
     }).addTo(ambuLeafRef.current);
 
-    // Marcador pulsante
+    // Marcador pulsante + ARRASTRABLE
     const markerHtml = `
-      <div style="position:relative;width:24px;height:24px">
+      <div style="position:relative;width:32px;height:32px;cursor:grab">
         <div style="
-          position:absolute;inset:-8px;
+          position:absolute;inset:-10px;
           border-radius:50%;
-          border:2px solid rgba(220,38,38,0.5);
+          border:2px solid rgba(220,38,38,0.45);
           animation:ambuPing 1.6s cubic-bezier(0,0,0.2,1) infinite
         "></div>
         <div style="
-          width:24px;height:24px;
+          width:32px;height:32px;
           background:#dc2626;
           border:3px solid white;
           border-radius:50%;
-          box-shadow:0 2px 10px rgba(220,38,38,0.5)
+          box-shadow:0 3px 12px rgba(220,38,38,0.55)
         "></div>
       </div>`;
 
@@ -114,16 +127,36 @@ export default function Emergencia() {
       ambuMarkerRef.current.setLatLng([lat, lon]);
     } else {
       ambuMarkerRef.current = L.marker([lat, lon], {
+        draggable: true,          // ← arrastrable
+        autoPan: true,
         icon: L.divIcon({
           className: "",
           html: markerHtml,
-          iconSize: [24, 24],
-          iconAnchor: [12, 12],
+          iconSize: [32, 32],
+          iconAnchor: [16, 16],
         }),
       })
         .addTo(ambuLeafRef.current)
-        .bindPopup("<b>📍 Tu ubicación</b><br>Ambulancia en camino aquí")
+        .bindPopup(
+          "<b>📍 Tu ubicación</b><br><small style='color:#64748b'>Arrastra para ajustar</small>"
+        )
         .openPopup();
+
+      // Al terminar de arrastrar → actualizar coordenadas + re-geocodificar
+      ambuMarkerRef.current.on("dragend", async (e) => {
+        const { lat: newLat, lng: newLon } = e.target.getLatLng();
+        setAmbuGeo(g => ({
+          ...g,
+          lat: newLat,
+          lon: newLon,
+          address: "Actualizando dirección…",
+        }));
+        const addr = await reverseGeocode(newLat, newLon);
+        setAmbuGeo(g => ({ ...g, address: addr }));
+        ambuMarkerRef.current
+          .bindPopup("<b>📍 Ubicación ajustada</b><br><small style='color:#64748b'>Arrastra para corregir</small>")
+          .openPopup();
+      });
     }
   };
 
@@ -163,28 +196,16 @@ export default function Emergencia() {
     setAmbuGeo(g => ({ ...g, geoLoading: true, geoError: "" }));
     navigator.geolocation.getCurrentPosition(
       async (pos) => {
-        const { latitude: lat, longitude: lon, accuracy } = pos.coords;
-        setAmbuGeo(g => ({ ...g, lat, lon, geoLoading: false, accuracy }));
-        // Reverse geocoding Nominatim
-        try {
-          const r = await fetch(
-            `https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lon}&format=json`,
-            { headers: { "Accept-Language": "es" } }
-          );
-          const d = await r.json();
-          setAmbuGeo(g => ({
-            ...g,
-            address: d.display_name || `${lat.toFixed(6)}, ${lon.toFixed(6)}`,
-          }));
-        } catch {
-          setAmbuGeo(g => ({ ...g, address: `${lat.toFixed(6)}, ${lon.toFixed(6)}` }));
-        }
+        const { latitude: lat, longitude: lon } = pos.coords;
+        setAmbuGeo(g => ({ ...g, lat, lon, geoLoading: false, address: "Obteniendo dirección…" }));
+        const addr = await reverseGeocode(lat, lon);
+        setAmbuGeo(g => ({ ...g, address: addr }));
       },
       (err) => {
         const msgs = {
           1: "Permiso denegado. Ve a Configuración del sitio y activa la ubicación.",
-          2: "No se pudo determinar tu posición actual.",
-          3: "Se agotó el tiempo al obtener la ubicación. Inténtalo de nuevo.",
+          2: "No se pudo determinar tu posición.",
+          3: "Se agotó el tiempo. Inténtalo de nuevo.",
         };
         setAmbuGeo(g => ({
           ...g, geoLoading: false,
@@ -193,6 +214,41 @@ export default function Emergencia() {
       },
       { enableHighAccuracy: true, timeout: 12000, maximumAge: 0 }
     );
+  };
+
+  // ── Buscar dirección manualmente ────────────────────────────────────────
+  const [searchAddr, setSearchAddr] = useState("");
+  const [searchLoading, setSearchLoading] = useState(false);
+
+  const buscarDireccion = async (e) => {
+    e.preventDefault();
+    if (!searchAddr.trim()) return;
+    setSearchLoading(true);
+    setAmbuGeo(g => ({ ...g, geoError: "" }));
+    try {
+      const r = await fetch(
+        `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(searchAddr)}&format=json&limit=1`,
+        { headers: { "Accept-Language": "es" } }
+      );
+      const results = await r.json();
+      if (!results.length) {
+        setAmbuGeo(g => ({ ...g, geoError: "No se encontró esa dirección. Intenta con más detalle." }));
+      } else {
+        const { lat, lon, display_name } = results[0];
+        const newLat = parseFloat(lat);
+        const newLon = parseFloat(lon);
+        setAmbuGeo(g => ({ ...g, lat: newLat, lon: newLon, address: display_name }));
+        // Mover mapa + marcador si ya existe
+        if (ambuLeafRef.current) {
+          ambuLeafRef.current.setView([newLat, newLon], 16);
+          if (ambuMarkerRef.current) ambuMarkerRef.current.setLatLng([newLat, newLon]);
+        }
+      }
+    } catch {
+      setAmbuGeo(g => ({ ...g, geoError: "Error buscando la dirección. Verifica tu conexión." }));
+    } finally {
+      setSearchLoading(false);
+    }
   };
 
   const cancelarAmbu = () => {
@@ -609,59 +665,68 @@ export default function Emergencia() {
                         </button>
                       </div>
 
-                      {/* Obtener ubicación */}
-                      <div className="px-5 py-4 bg-white border-b border-red-100">
-                        {ambuGeo.lat === null ? (
+                      {/* ── Obtener / mostrar ubicación ── */}
+                      <div className="px-5 py-4 bg-white border-b border-red-100 space-y-3">
+
+                        {/* Botón GPS */}
+                        <button
+                          type="button"
+                          onClick={solicitarUbicacion}
+                          disabled={ambuGeo.geoLoading}
+                          className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl border-2 border-dashed border-red-300 text-red-600 font-bold text-sm hover:bg-red-50 disabled:opacity-60 transition-colors"
+                        >
+                          {ambuGeo.geoLoading ? (
+                            <>
+                              <svg className="w-4 h-4 animate-spin" viewBox="0 0 24 24" fill="none">
+                                <circle cx="12" cy="12" r="9" stroke="currentColor" strokeWidth="2" opacity=".25" />
+                                <path d="M12 3a9 9 0 0 1 9 9" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+                              </svg>
+                              Obteniendo ubicación GPS…
+                            </>
+                          ) : (
+                            <>
+                              <span className="material-symbols-outlined text-[18px]">my_location</span>
+                              {ambuGeo.lat ? "Actualizar con GPS" : "Usar mi ubicación GPS"}
+                            </>
+                          )}
+                        </button>
+
+                        {/* Buscador manual de dirección */}
+                        <form onSubmit={buscarDireccion} className="flex gap-2">
+                          <input
+                            type="text"
+                            value={searchAddr}
+                            onChange={e => setSearchAddr(e.target.value)}
+                            placeholder="O escribe tu dirección…"
+                            className="flex-1 border border-slate-200 rounded-xl py-2.5 px-3 text-sm outline-none focus:border-red-400 focus:ring-2 focus:ring-red-100 transition-all placeholder:text-slate-400"
+                          />
                           <button
-                            type="button"
-                            onClick={solicitarUbicacion}
-                            disabled={ambuGeo.geoLoading}
-                            className="w-full flex items-center justify-center gap-2 py-3 rounded-xl border-2 border-dashed border-red-300 text-red-600 font-bold text-sm hover:bg-red-50 disabled:opacity-60 transition-colors"
+                            type="submit"
+                            disabled={searchLoading || !searchAddr.trim()}
+                            className="px-3 py-2.5 rounded-xl bg-slate-900 text-white text-sm font-bold disabled:opacity-50 hover:bg-slate-800 transition-colors shrink-0"
                           >
-                            {ambuGeo.geoLoading ? (
-                              <>
-                                <svg className="w-4 h-4 animate-spin" viewBox="0 0 24 24" fill="none">
-                                  <circle cx="12" cy="12" r="9" stroke="currentColor" strokeWidth="2" opacity=".25" />
-                                  <path d="M12 3a9 9 0 0 1 9 9" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
-                                </svg>
-                                Obteniendo tu ubicación…
-                              </>
+                            {searchLoading ? (
+                              <svg className="w-4 h-4 animate-spin" viewBox="0 0 24 24" fill="none">
+                                <circle cx="12" cy="12" r="9" stroke="currentColor" strokeWidth="2" opacity=".25" />
+                                <path d="M12 3a9 9 0 0 1 9 9" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+                              </svg>
                             ) : (
-                              <>
-                                <span className="material-symbols-outlined text-[18px]">my_location</span>
-                                Obtener mi ubicación GPS
-                              </>
+                              <span className="material-symbols-outlined text-[18px]">search</span>
                             )}
                           </button>
-                        ) : (
-                          <div className="flex items-start gap-3">
-                            <div className="w-8 h-8 rounded-full bg-emerald-100 flex items-center justify-center shrink-0 mt-0.5">
-                              <span className="material-symbols-outlined text-emerald-600 text-[16px]">check</span>
-                            </div>
-                            <div className="flex-1 min-w-0">
-                              <p className="text-xs font-bold text-emerald-700 uppercase tracking-widest mb-0.5">Ubicación obtenida</p>
-                              <p className="text-[12px] text-slate-600 leading-relaxed">{ambuGeo.address}</p>
-                            </div>
-                            <button
-                              type="button"
-                              onClick={() => {
-                                setAmbuGeo(g => ({ ...g, lat: null, lon: null, address: "" }));
-                                if (ambuLeafRef.current) {
-                                  ambuLeafRef.current.remove();
-                                  ambuLeafRef.current = null;
-                                  ambuMarkerRef.current = null;
-                                  ambuTileRef.current = null;
-                                }
-                              }}
-                              className="text-slate-300 hover:text-red-500 transition-colors shrink-0"
-                            >
-                              <span className="material-symbols-outlined text-[18px]">refresh</span>
-                            </button>
+                        </form>
+
+                        {/* Dirección obtenida */}
+                        {ambuGeo.lat !== null && ambuGeo.address && ambuGeo.address !== "Obteniendo dirección…" && (
+                          <div className="flex items-start gap-2.5 bg-emerald-50 border border-emerald-200 rounded-xl px-3 py-2.5">
+                            <span className="material-symbols-outlined text-emerald-500 text-[17px] shrink-0 mt-0.5">check_circle</span>
+                            <p className="text-[12px] text-slate-700 leading-relaxed flex-1">{ambuGeo.address}</p>
                           </div>
                         )}
 
+                        {/* Error */}
                         {ambuGeo.geoError && (
-                          <div className="mt-3 flex items-start gap-2 bg-red-50 border border-red-200 rounded-xl px-3 py-2.5">
+                          <div className="flex items-start gap-2 bg-red-50 border border-red-200 rounded-xl px-3 py-2.5">
                             <span className="material-symbols-outlined text-red-500 text-[16px] shrink-0 mt-0.5">error</span>
                             <p className="text-[12px] text-red-600 font-medium leading-relaxed">{ambuGeo.geoError}</p>
                           </div>
@@ -697,6 +762,13 @@ export default function Emergencia() {
                             ref={ambuMapRef}
                             style={{ height: "260px", width: "100%", zIndex: 0 }}
                           />
+                          {/* Hint arrastrar */}
+                          <div className="flex items-center gap-1.5 px-4 py-2 bg-slate-50 border-t border-slate-100">
+                            <span className="material-symbols-outlined text-slate-400 text-[14px]">open_with</span>
+                            <p className="text-[11px] text-slate-400 font-medium">
+                              ¿Ubicación incorrecta? <span className="text-slate-600 font-semibold">Arrastra el marcador rojo</span> para ajustar el punto exacto
+                            </p>
+                          </div>
                         </div>
                       )}
 
