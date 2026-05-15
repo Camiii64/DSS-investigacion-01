@@ -660,7 +660,7 @@ export default function Admin() {
         {createSuccess && (
           <div className="mb-8 bg-white rounded-2xl border border-slate-200/80 p-5 flex items-start gap-4 anim-rise d-0">
             <div className="w-9 h-9 rounded-full bg-emerald-100 flex items-center justify-center shrink-0">
-              <span className="text-emerald-600 text-lg">✓</span>
+              <span className="material-symbols-outlined text-emerald-600 text-[20px]">check</span>
             </div>
             <div className="flex-1 min-w-0">
               <p className="text-[13.5px] font-semibold text-slate-900">Usuario creado correctamente</p>
@@ -672,7 +672,7 @@ export default function Admin() {
                 <p className="font-mono text-[11px] text-slate-400 mt-1">Licencia: {createSuccess.licencia}</p>
               )}
             </div>
-            <button onClick={() => setCreateSuccess(null)} className="text-slate-400 hover:text-slate-600">✕</button>
+            <button onClick={() => setCreateSuccess(null)} className="text-slate-400 hover:text-slate-600"><span className="material-symbols-outlined text-[18px]">close</span></button>
           </div>
         )}
 
@@ -896,7 +896,7 @@ export default function Admin() {
                     <p className="text-[13.5px] font-semibold text-slate-900">Emergencia registrada — Doctor asignado</p>
                     <p className="text-[12px] text-red-600 mt-0.5">Dr. {emergResult.doctorNombre}</p>
                   </div>
-                  <button onClick={() => setEmergResult(null)} className="text-slate-400 hover:text-slate-600">✕</button>
+                  <button onClick={() => setEmergResult(null)} className="text-slate-400 hover:text-slate-600"><span className="material-symbols-outlined text-[18px]">close</span></button>
                 </div>
                 <div className="bg-slate-50 rounded-xl p-4 border border-slate-200 space-y-2">
                   <p className="font-mono text-[10px] tracking-[0.22em] uppercase text-slate-400 mb-2">Credenciales Temporales</p>
@@ -990,7 +990,8 @@ export default function Admin() {
           display: "flex", alignItems: "center", gap: "8px",
           boxShadow: "0 8px 24px rgba(0,0,0,0.12)", maxWidth: "320px",
         }}>
-          {notification.type === "success" ? "✓" : "✕"} {notification.message}
+          <span className="material-symbols-outlined text-[16px]">{notification.type === "success" ? "check" : "close"}</span>
+          {notification.message}
         </div>
       )}
 

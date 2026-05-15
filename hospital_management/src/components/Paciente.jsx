@@ -448,7 +448,7 @@ export default function PatientAppointments() {
           <div className="bg-white rounded-2xl p-8 max-w-md w-full shadow-2xl border border-slate-100">
             <div className="flex justify-between items-start mb-6">
               <h3 className="text-[17px] font-semibold text-slate-900">Cita Cancelada</h3>
-              <button onClick={() => setReceipt("")} className="text-slate-400 hover:text-slate-700 w-7 h-7 rounded-full hover:bg-slate-100 flex items-center justify-center text-[14px]">✕</button>
+              <button onClick={() => setReceipt("")} className="text-slate-400 hover:text-slate-700 w-7 h-7 rounded-full hover:bg-slate-100 flex items-center justify-center"><span className="material-symbols-outlined text-[18px]">close</span></button>
             </div>
             <pre className="bg-[#F1F5F9] border border-slate-100 p-5 rounded-xl font-mono text-[12px] text-slate-600 overflow-x-auto leading-relaxed whitespace-pre-wrap">
               {receipt}

@@ -440,7 +440,7 @@ function Login() {
                       onClick={() => { setOlvideStep("email"); setOlvideCodigo(""); setOlvideMsg(""); setError(""); }}
                       className="w-full text-sm text-slate-500 hover:text-[#006B76] font-semibold transition-colors"
                     >
-                      ← Usar otro correo
+                      Usar otro correo
                     </button>
                   </form>
                 )}

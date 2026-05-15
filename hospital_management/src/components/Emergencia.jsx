@@ -138,7 +138,7 @@ export default function Emergencia() {
       })
         .addTo(ambuLeafRef.current)
         .bindPopup(
-          "<b>📍 Tu ubicación</b><br><small style='color:#64748b'>Arrastra para ajustar</small>"
+          "<b>Tu ubicación</b><br><small style='color:#64748b'>Arrastra para ajustar</small>"
         )
         .openPopup();
 
@@ -154,7 +154,7 @@ export default function Emergencia() {
         const addr = await reverseGeocode(newLat, newLon);
         setAmbuGeo(g => ({ ...g, address: addr }));
         ambuMarkerRef.current
-          .bindPopup("<b>📍 Ubicación ajustada</b><br><small style='color:#64748b'>Arrastra para corregir</small>")
+          .bindPopup("<b>Ubicación ajustada</b><br><small style='color:#64748b'>Arrastra para corregir</small>")
           .openPopup();
       });
     }
@@ -630,7 +630,11 @@ export default function Emergencia() {
                   {/* ── Estado IDLE: botón de entrada ── */}
                   {ambuState === "idle" && (
                     <div className="fade-slide border-2 border-dashed border-slate-200 hover:border-red-300 rounded-2xl p-6 text-center transition-colors">
-                      <div className="text-4xl mb-3 ambu-bounce select-none">🚑</div>
+                      <div className="mb-3 ambu-bounce select-none flex items-center justify-center">
+                        <div className="w-16 h-16 rounded-2xl bg-red-100 flex items-center justify-center">
+                          <span className="material-symbols-outlined text-red-600" style={{ fontSize: "36px", fontVariationSettings: "'FILL' 1" }}>local_shipping</span>
+                        </div>
+                      </div>
                       <p className="font-extrabold text-slate-800 text-base mb-1">¿Necesitas una ambulancia?</p>
                       <p className="text-xs text-slate-400 mb-5 leading-relaxed">
                         Compartiremos tu ubicación GPS exacta para despachar una unidad lo antes posible.
@@ -651,7 +655,7 @@ export default function Emergencia() {
                     <div className="fade-slide border border-red-200 rounded-2xl overflow-hidden shadow-sm">
                       {/* Header */}
                       <div className="bg-red-600 px-5 py-4 flex items-center gap-3">
-                        <span className="text-2xl">🚑</span>
+                        <span className="material-symbols-outlined text-white text-[26px]" style={{ fontVariationSettings: "'FILL' 1" }}>local_shipping</span>
                         <div className="flex-1">
                           <p className="font-black text-white text-base leading-none">Pedir Ambulancia</p>
                           <p className="text-red-100 text-xs mt-0.5">Compartiremos tu ubicación exacta al despachar la unidad</p>
@@ -798,8 +802,12 @@ export default function Emergencia() {
                     <div className="fade-slide border-2 border-emerald-200 rounded-2xl overflow-hidden shadow-sm bg-gradient-to-b from-emerald-50 to-white">
                       {/* Header */}
                       <div className="bg-emerald-500 px-5 py-5 text-center">
-                        <div className="text-5xl ambu-bounce mb-2 select-none">🚑</div>
-                        <h3 className="text-xl font-black text-white leading-none">¡Ambulancia en Camino!</h3>
+                        <div className="ambu-bounce mb-3 flex items-center justify-center">
+                          <div className="w-16 h-16 rounded-2xl bg-white/20 flex items-center justify-center">
+                            <span className="material-symbols-outlined text-white" style={{ fontSize: "38px", fontVariationSettings: "'FILL' 1" }}>local_shipping</span>
+                          </div>
+                        </div>
+                        <h3 className="text-xl font-black text-white leading-none">Ambulancia en Camino</h3>
                         <p className="text-emerald-100 text-xs mt-1.5 font-semibold">
                           Una unidad fue despachada a tu ubicación
                         </p>
