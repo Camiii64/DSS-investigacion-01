@@ -407,7 +407,7 @@ async function generarCodigoEmergenciaUnico() {
 
 // EMERGENCIA PÚBLICA — paciente sin cuenta pide atención desde la app
 app.post("/emergencia", async (req, res) => {
-  const { nombre, especialidad, motivo, email } = req.body;
+  const { nombre, especialidad, motivo, email, latitud, longitud } = req.body;
   if (!nombre || !especialidad || !motivo) {
     return res.status(400).json({ success: false, message: "Faltan datos obligatorios" });
   }
@@ -478,9 +478,11 @@ app.post("/emergencia", async (req, res) => {
     const doctorNombre = doctores[0].nombre;
 
     const fechaAhora = new Date().toISOString().slice(0, 19).replace("T", " ");
+    const lat = latitud  != null ? parseFloat(latitud)  : null;
+    const lon = longitud != null ? parseFloat(longitud) : null;
     await dbPromise.query(
-      "INSERT INTO citas (paciente_id, doctor_id, fecha_solicitada, motivo, estado, prioridad) VALUES (?, ?, ?, ?, 'ACEPTADA', 'EMERGENCIA')",
-      [pacienteId, doctorId, fechaAhora, motivo]
+      "INSERT INTO citas (paciente_id, doctor_id, fecha_solicitada, motivo, estado, prioridad, latitud, longitud) VALUES (?, ?, ?, ?, 'ACEPTADA', 'EMERGENCIA', ?, ?)",
+      [pacienteId, doctorId, fechaAhora, motivo, lat, lon]
     );
 
     // Si el paciente dio un email REAL (no temporal) Y se generó un código, mándaselo por correo.

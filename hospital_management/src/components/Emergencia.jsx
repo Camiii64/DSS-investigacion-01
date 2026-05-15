@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { API_URL } from "../config";
 import LoadingOverlay from "./LoadingOverlay";
@@ -14,6 +14,126 @@ export default function Emergencia() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [result, setResult] = useState(null);
+
+  // ── Geolocalización ────────────────────────────────────────────────────────
+  const [geo, setGeo] = useState({
+    lat: null,
+    lon: null,
+    address: "",
+    geoLoading: false,
+    geoError: "",
+  });
+  const mapRef = useRef(null);       // ref para el contenedor del mapa
+  const leafletMapRef = useRef(null); // instancia del mapa Leaflet
+  const markerRef = useRef(null);     // marcador activo
+
+  // Cargar Leaflet CSS + JS desde CDN al montar el componente
+  useEffect(() => {
+    if (document.getElementById("leaflet-css")) return; // ya cargado
+    const link = document.createElement("link");
+    link.id = "leaflet-css";
+    link.rel = "stylesheet";
+    link.href = "https://unpkg.com/leaflet@1.9.4/dist/leaflet.css";
+    document.head.appendChild(link);
+
+    const script = document.createElement("script");
+    script.id = "leaflet-js";
+    script.src = "https://unpkg.com/leaflet@1.9.4/dist/leaflet.js";
+    document.head.appendChild(script);
+  }, []);
+
+  // Helper: inicializa un mapa Leaflet en el div referenciado
+  const buildMap = (lat, lon) => {
+    const L = window.L;
+    if (!L || !mapRef.current) return;
+    // Destruir instancia previa si existe
+    if (leafletMapRef.current) {
+      leafletMapRef.current.remove();
+      leafletMapRef.current = null;
+      markerRef.current = null;
+    }
+    leafletMapRef.current = L.map(mapRef.current).setView([lat, lon], 16);
+    L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+      attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
+      maxZoom: 19,
+    }).addTo(leafletMapRef.current);
+    markerRef.current = L.marker([lat, lon], {
+      icon: L.divIcon({
+        className: "",
+        html: `<div style="width:28px;height:28px;background:#dc2626;border:3px solid white;border-radius:50%;box-shadow:0 2px 8px rgba(0,0,0,0.35)"></div>`,
+        iconSize: [28, 28],
+        iconAnchor: [14, 14],
+      }),
+    })
+      .addTo(leafletMapRef.current)
+      .bindPopup("📍 Tu ubicación")
+      .openPopup();
+  };
+
+  // Inicializar / re-inicializar el mapa cuando cambian coordenadas o la vista (form ↔ confirmación)
+  useEffect(() => {
+    if (geo.lat === null) return;
+    // Esperar un tick para que React termine de renderizar el div del mapa
+    const timer = setTimeout(() => {
+      if (window.L) {
+        buildMap(geo.lat, geo.lon);
+      } else {
+        const script = document.getElementById("leaflet-js");
+        if (script) {
+          script.onload = () => buildMap(geo.lat, geo.lon);
+        }
+      }
+    }, 50);
+    return () => clearTimeout(timer);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [geo.lat, geo.lon, result]);
+
+  const solicitarUbicacion = () => {
+    if (!navigator.geolocation) {
+      setGeo(g => ({ ...g, geoError: "Tu navegador no soporta geolocalización." }));
+      return;
+    }
+    setGeo(g => ({ ...g, geoLoading: true, geoError: "" }));
+    navigator.geolocation.getCurrentPosition(
+      async (pos) => {
+        const { latitude: lat, longitude: lon } = pos.coords;
+        setGeo(g => ({ ...g, lat, lon, geoLoading: false }));
+
+        // Reverse geocoding con Nominatim
+        try {
+          const r = await fetch(
+            `https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lon}&format=json`,
+            { headers: { "Accept-Language": "es" } }
+          );
+          const d = await r.json();
+          setGeo(g => ({
+            ...g,
+            address: d.display_name || `${lat.toFixed(5)}, ${lon.toFixed(5)}`,
+          }));
+        } catch {
+          setGeo(g => ({ ...g, address: `${lat.toFixed(5)}, ${lon.toFixed(5)}` }));
+        }
+      },
+      (err) => {
+        const msgs = {
+          1: "Permiso denegado. Activa la ubicación en tu navegador.",
+          2: "No se pudo determinar tu posición.",
+          3: "Tiempo agotado al obtener la ubicación.",
+        };
+        setGeo(g => ({ ...g, geoLoading: false, geoError: msgs[err.code] || "Error al obtener ubicación." }));
+      },
+      { enableHighAccuracy: true, timeout: 10000 }
+    );
+  };
+
+  const limpiarUbicacion = () => {
+    if (leafletMapRef.current) {
+      leafletMapRef.current.remove();
+      leafletMapRef.current = null;
+      markerRef.current = null;
+    }
+    setGeo({ lat: null, lon: null, address: "", geoLoading: false, geoError: "" });
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -32,6 +152,8 @@ export default function Emergencia() {
           especialidad: form.especialidad,
           motivo: form.motivo.trim(),
           email: form.email.trim() || undefined,
+          latitud:  geo.lat  ?? undefined,
+          longitud: geo.lon  ?? undefined,
         }),
       });
       const data = await res.json();
@@ -231,6 +353,81 @@ export default function Emergencia() {
                     </div>
                   </div>
 
+                  {/* ── Geolocalización ── */}
+                  <div className="border border-slate-200 rounded-xl overflow-hidden">
+                    <div className="flex items-center justify-between px-4 py-3 bg-slate-50 border-b border-slate-200">
+                      <div className="flex items-center gap-2">
+                        <span className="material-symbols-outlined text-slate-500 text-[18px]">location_on</span>
+                        <span className="text-xs font-bold text-slate-600 uppercase tracking-widest">Ubicación</span>
+                        <span className="text-xs text-slate-400 font-normal normal-case">— ayuda a enviar ayuda más rápido</span>
+                      </div>
+                      {geo.lat === null ? (
+                        <button
+                          type="button"
+                          onClick={solicitarUbicacion}
+                          disabled={geo.geoLoading}
+                          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[12px] font-semibold bg-red-600 text-white hover:bg-red-700 disabled:opacity-60 transition-colors"
+                        >
+                          {geo.geoLoading ? (
+                            <>
+                              <svg className="w-3.5 h-3.5 animate-spin" viewBox="0 0 24 24" fill="none">
+                                <circle cx="12" cy="12" r="9" stroke="currentColor" strokeWidth="2" opacity=".25"/>
+                                <path d="M12 3a9 9 0 0 1 9 9" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+                              </svg>
+                              Obteniendo…
+                            </>
+                          ) : (
+                            <>
+                              <span className="material-symbols-outlined text-[14px]">my_location</span>
+                              Compartir mi ubicación
+                            </>
+                          )}
+                        </button>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={limpiarUbicacion}
+                          className="text-[12px] font-medium text-slate-400 hover:text-red-600 transition-colors"
+                        >
+                          Eliminar
+                        </button>
+                      )}
+                    </div>
+
+                    {/* Error geo */}
+                    {geo.geoError && (
+                      <div className="px-4 py-3 text-[12px] text-red-600 font-medium bg-red-50 flex items-center gap-2">
+                        <span className="material-symbols-outlined text-[14px]">error</span>
+                        {geo.geoError}
+                      </div>
+                    )}
+
+                    {/* Mapa + dirección */}
+                    {geo.lat !== null && (
+                      <div>
+                        {/* Dirección textual */}
+                        <div className="px-4 py-2.5 flex items-start gap-2 border-b border-slate-100">
+                          <span className="material-symbols-outlined text-emerald-500 text-[16px] mt-0.5 shrink-0">check_circle</span>
+                          <p className="text-[12px] text-slate-600 leading-relaxed">
+                            {geo.address || `${geo.lat.toFixed(5)}, ${geo.lon.toFixed(5)}`}
+                          </p>
+                        </div>
+                        {/* Contenedor mapa Leaflet */}
+                        <div
+                          ref={mapRef}
+                          style={{ height: "220px", width: "100%", zIndex: 0 }}
+                        />
+                      </div>
+                    )}
+
+                    {/* Estado vacío */}
+                    {geo.lat === null && !geo.geoError && !geo.geoLoading && (
+                      <div className="px-4 py-4 text-center text-[12px] text-slate-400">
+                        Presiona el botón para compartir tu ubicación exacta
+                      </div>
+                    )}
+                  </div>
+
                   {error && (
                     <div className="flex items-center gap-2 bg-red-50 border border-red-200 text-red-700 rounded-xl px-4 py-3 text-sm font-semibold">
                       <span className="material-symbols-outlined text-base">error</span>
@@ -290,6 +487,23 @@ export default function Emergencia() {
                   </div>
                 </div>
 
+                {/* Ubicación registrada */}
+                {geo.lat !== null && (
+                  <div className="bg-slate-50 border border-slate-200 rounded-2xl overflow-hidden mb-5">
+                    <div className="px-4 py-3 flex items-center gap-2 border-b border-slate-200">
+                      <span className="material-symbols-outlined text-emerald-500 text-[18px]">location_on</span>
+                      <p className="text-[10px] font-extrabold text-slate-600 uppercase tracking-widest">Ubicación enviada</p>
+                    </div>
+                    {geo.address && (
+                      <p className="px-4 py-2 text-[12px] text-slate-600 border-b border-slate-100">{geo.address}</p>
+                    )}
+                    <div
+                      ref={mapRef}
+                      style={{ height: "180px", width: "100%", zIndex: 0 }}
+                    />
+                  </div>
+                )}
+
                 {/* Código de emergencia */}
                 {result.esNuevo && result.codigoEmergencia && (
                   <div className="bg-gradient-to-br from-red-50 to-amber-50 border-2 border-red-200 rounded-2xl p-5 mb-5">
@@ -336,7 +550,7 @@ export default function Emergencia() {
                     Entrar a mi perfil
                   </button>
                   <button
-                    onClick={() => { setResult(null); setForm({ nombre: "", especialidad: "", motivo: "", email: "" }); }}
+                    onClick={() => { setResult(null); setForm({ nombre: "", especialidad: "", motivo: "", email: "" }); limpiarUbicacion(); }}
                     className="w-full border border-slate-200 text-slate-600 hover:bg-slate-50 py-3.5 rounded-xl font-semibold text-sm transition-colors"
                   >
                     Registrar otra emergencia

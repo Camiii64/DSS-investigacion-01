@@ -73,3 +73,37 @@ input[type="password"]::-ms-clear {
 
 /* Selection */
 ::selection { background: #DC2626; color: #fff; }
+
+/* ====== DASHBOARD — sistema visual ====== */
+@keyframes riseIn {
+  from { opacity: 0; transform: translateY(14px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.anim-rise { opacity: 0; animation: riseIn .6s cubic-bezier(.2,.8,.2,1) forwards; }
+.d-0 { animation-delay: .02s; }
+.d-1 { animation-delay: .08s; }
+.d-2 { animation-delay: .14s; }
+.d-3 { animation-delay: .20s; }
+.d-4 { animation-delay: .26s; }
+.d-5 { animation-delay: .32s; }
+.d-6 { animation-delay: .38s; }
+.d-7 { animation-delay: .44s; }
+
+.lift { transition: transform .35s cubic-bezier(.2,.8,.2,1), box-shadow .35s, border-color .25s; }
+.lift:hover { transform: translateY(-2px); }
+
+@keyframes pulseRing {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(220,38,38,.35); }
+  50%       { box-shadow: 0 0 0 12px rgba(220,38,38,0); }
+}
+.pulse-ring-red { animation: pulseRing 2s ease-out infinite; }
+
+@keyframes pulseDot {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50%       { opacity: .6; transform: scale(1.4); }
+}
+.pulse-dot { animation: pulseDot 1.8s ease-in-out infinite; }
+
+/* Scrollbar polish */
+.no-bar::-webkit-scrollbar { display: none; }
+.no-bar { scrollbar-width: none; }
