@@ -3,33 +3,56 @@ import { useNavigate } from "react-router-dom";
 import { API_URL } from "../config";
 import LoadingOverlay from "./LoadingOverlay";
 
-const ESPECIALIDADES = [
-  "Cardiología", "Dermatología", "Neurología", "Pediatría", "Medicina General",
-];
+const ESPECIALIDADES = ["Cardiología", "Dermatología", "Neurología", "Pediatría", "Medicina General"];
+
+// ── Capas de mapa disponibles ────────────────────────────────────────────────
+const TILE_LAYERS = {
+  estandar: {
+    label: "Estándar",
+    icon: "map",
+    url: "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
+    attr: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+  },
+  claro: {
+    label: "Claro",
+    icon: "directions_car",
+    url: "https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png",
+    attr: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors © <a href="https://carto.com/attributions">CARTO</a>',
+  },
+  satelite: {
+    label: "Satélite",
+    icon: "satellite_alt",
+    url: "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
+    attr: "Tiles © Esri — Esri, DeLorme, NAVTEQ",
+  },
+};
 
 export default function Emergencia() {
   const navigate = useNavigate();
 
+  // ── Estado del formulario principal ─────────────────────────────────────
   const [form, setForm] = useState({ nombre: "", especialidad: "", motivo: "", email: "" });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [result, setResult] = useState(null);
 
-  // ── Geolocalización ────────────────────────────────────────────────────────
-  const [geo, setGeo] = useState({
-    lat: null,
-    lon: null,
-    address: "",
-    geoLoading: false,
-    geoError: "",
+  // ── Estado de la sección ambulancia ─────────────────────────────────────
+  // "idle" → "map" → "confirmed"
+  const [ambuState, setAmbuState] = useState("idle");
+  const [ambuGeo, setAmbuGeo] = useState({
+    lat: null, lon: null, address: "",
+    geoLoading: false, geoError: "",
   });
-  const mapRef = useRef(null);       // ref para el contenedor del mapa
-  const leafletMapRef = useRef(null); // instancia del mapa Leaflet
-  const markerRef = useRef(null);     // marcador activo
+  const [activeLayer, setActiveLayer] = useState("estandar");
 
-  // Cargar Leaflet CSS + JS desde CDN al montar el componente
+  const ambuMapRef    = useRef(null); // div contenedor
+  const ambuLeafRef   = useRef(null); // instancia L.Map
+  const ambuMarkerRef = useRef(null); // L.Marker
+  const ambuTileRef   = useRef(null); // L.TileLayer activo
+
+  // ── Carga de Leaflet desde CDN ──────────────────────────────────────────
   useEffect(() => {
-    if (document.getElementById("leaflet-css")) return; // ya cargado
+    if (document.getElementById("leaflet-css")) return;
     const link = document.createElement("link");
     link.id = "leaflet-css";
     link.rel = "stylesheet";
@@ -42,99 +65,160 @@ export default function Emergencia() {
     document.head.appendChild(script);
   }, []);
 
-  // Helper: inicializa un mapa Leaflet en el div referenciado
-  const buildMap = (lat, lon) => {
+  // ── Construir o actualizar el mapa de ambulancia ────────────────────────
+  const buildAmbuMap = (lat, lon, layerKey) => {
     const L = window.L;
-    if (!L || !mapRef.current) return;
-    // Destruir instancia previa si existe
-    if (leafletMapRef.current) {
-      leafletMapRef.current.remove();
-      leafletMapRef.current = null;
-      markerRef.current = null;
+    if (!L || !ambuMapRef.current) return;
+
+    const key = layerKey || activeLayer;
+    const tl  = TILE_LAYERS[key];
+
+    if (!ambuLeafRef.current) {
+      // Primera vez: crear mapa
+      ambuLeafRef.current = L.map(ambuMapRef.current, {
+        zoomControl: true,
+        attributionControl: true,
+      }).setView([lat, lon], 16);
+    } else {
+      ambuLeafRef.current.setView([lat, lon], 16);
     }
-    leafletMapRef.current = L.map(mapRef.current).setView([lat, lon], 16);
-    L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
-      attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
+
+    // Tile layer
+    if (ambuTileRef.current) {
+      ambuLeafRef.current.removeLayer(ambuTileRef.current);
+    }
+    ambuTileRef.current = L.tileLayer(tl.url, {
+      attribution: tl.attr,
       maxZoom: 19,
-    }).addTo(leafletMapRef.current);
-    markerRef.current = L.marker([lat, lon], {
-      icon: L.divIcon({
-        className: "",
-        html: `<div style="width:28px;height:28px;background:#dc2626;border:3px solid white;border-radius:50%;box-shadow:0 2px 8px rgba(0,0,0,0.35)"></div>`,
-        iconSize: [28, 28],
-        iconAnchor: [14, 14],
-      }),
-    })
-      .addTo(leafletMapRef.current)
-      .bindPopup("📍 Tu ubicación")
-      .openPopup();
+    }).addTo(ambuLeafRef.current);
+
+    // Marcador pulsante
+    const markerHtml = `
+      <div style="position:relative;width:24px;height:24px">
+        <div style="
+          position:absolute;inset:-8px;
+          border-radius:50%;
+          border:2px solid rgba(220,38,38,0.5);
+          animation:ambuPing 1.6s cubic-bezier(0,0,0.2,1) infinite
+        "></div>
+        <div style="
+          width:24px;height:24px;
+          background:#dc2626;
+          border:3px solid white;
+          border-radius:50%;
+          box-shadow:0 2px 10px rgba(220,38,38,0.5)
+        "></div>
+      </div>`;
+
+    if (ambuMarkerRef.current) {
+      ambuMarkerRef.current.setLatLng([lat, lon]);
+    } else {
+      ambuMarkerRef.current = L.marker([lat, lon], {
+        icon: L.divIcon({
+          className: "",
+          html: markerHtml,
+          iconSize: [24, 24],
+          iconAnchor: [12, 12],
+        }),
+      })
+        .addTo(ambuLeafRef.current)
+        .bindPopup("<b>📍 Tu ubicación</b><br>Ambulancia en camino aquí")
+        .openPopup();
+    }
   };
 
-  // Inicializar / re-inicializar el mapa cuando cambian coordenadas o la vista (form ↔ confirmación)
+  // Cambiar capa sin destruir el mapa
+  const switchLayer = (key) => {
+    setActiveLayer(key);
+    const L = window.L;
+    if (!L || !ambuLeafRef.current) return;
+    if (ambuTileRef.current) ambuLeafRef.current.removeLayer(ambuTileRef.current);
+    const tl = TILE_LAYERS[key];
+    ambuTileRef.current = L.tileLayer(tl.url, {
+      attribution: tl.attr, maxZoom: 19,
+    }).addTo(ambuLeafRef.current);
+  };
+
+  // Cuando se obtienen coordenadas o se abre la vista del mapa, (re)construir
   useEffect(() => {
-    if (geo.lat === null) return;
-    // Esperar un tick para que React termine de renderizar el div del mapa
+    if (ambuGeo.lat === null || ambuState !== "map") return;
     const timer = setTimeout(() => {
       if (window.L) {
-        buildMap(geo.lat, geo.lon);
+        buildAmbuMap(ambuGeo.lat, ambuGeo.lon);
       } else {
-        const script = document.getElementById("leaflet-js");
-        if (script) {
-          script.onload = () => buildMap(geo.lat, geo.lon);
-        }
+        const s = document.getElementById("leaflet-js");
+        if (s) s.onload = () => buildAmbuMap(ambuGeo.lat, ambuGeo.lon);
       }
-    }, 50);
+    }, 80);
     return () => clearTimeout(timer);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [geo.lat, geo.lon, result]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [ambuGeo.lat, ambuGeo.lon, ambuState]);
 
+  // ── Geolocalización ─────────────────────────────────────────────────────
   const solicitarUbicacion = () => {
     if (!navigator.geolocation) {
-      setGeo(g => ({ ...g, geoError: "Tu navegador no soporta geolocalización." }));
+      setAmbuGeo(g => ({ ...g, geoError: "Tu navegador no soporta geolocalización." }));
       return;
     }
-    setGeo(g => ({ ...g, geoLoading: true, geoError: "" }));
+    setAmbuGeo(g => ({ ...g, geoLoading: true, geoError: "" }));
     navigator.geolocation.getCurrentPosition(
       async (pos) => {
-        const { latitude: lat, longitude: lon } = pos.coords;
-        setGeo(g => ({ ...g, lat, lon, geoLoading: false }));
-
-        // Reverse geocoding con Nominatim
+        const { latitude: lat, longitude: lon, accuracy } = pos.coords;
+        setAmbuGeo(g => ({ ...g, lat, lon, geoLoading: false, accuracy }));
+        // Reverse geocoding Nominatim
         try {
           const r = await fetch(
             `https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lon}&format=json`,
             { headers: { "Accept-Language": "es" } }
           );
           const d = await r.json();
-          setGeo(g => ({
+          setAmbuGeo(g => ({
             ...g,
-            address: d.display_name || `${lat.toFixed(5)}, ${lon.toFixed(5)}`,
+            address: d.display_name || `${lat.toFixed(6)}, ${lon.toFixed(6)}`,
           }));
         } catch {
-          setGeo(g => ({ ...g, address: `${lat.toFixed(5)}, ${lon.toFixed(5)}` }));
+          setAmbuGeo(g => ({ ...g, address: `${lat.toFixed(6)}, ${lon.toFixed(6)}` }));
         }
       },
       (err) => {
         const msgs = {
-          1: "Permiso denegado. Activa la ubicación en tu navegador.",
-          2: "No se pudo determinar tu posición.",
-          3: "Tiempo agotado al obtener la ubicación.",
+          1: "Permiso denegado. Ve a Configuración del sitio y activa la ubicación.",
+          2: "No se pudo determinar tu posición actual.",
+          3: "Se agotó el tiempo al obtener la ubicación. Inténtalo de nuevo.",
         };
-        setGeo(g => ({ ...g, geoLoading: false, geoError: msgs[err.code] || "Error al obtener ubicación." }));
+        setAmbuGeo(g => ({
+          ...g, geoLoading: false,
+          geoError: msgs[err.code] || "Error al obtener ubicación.",
+        }));
       },
-      { enableHighAccuracy: true, timeout: 10000 }
+      { enableHighAccuracy: true, timeout: 12000, maximumAge: 0 }
     );
   };
 
-  const limpiarUbicacion = () => {
-    if (leafletMapRef.current) {
-      leafletMapRef.current.remove();
-      leafletMapRef.current = null;
-      markerRef.current = null;
+  const cancelarAmbu = () => {
+    if (ambuLeafRef.current) {
+      ambuLeafRef.current.remove();
+      ambuLeafRef.current = null;
+      ambuMarkerRef.current = null;
+      ambuTileRef.current = null;
     }
-    setGeo({ lat: null, lon: null, address: "", geoLoading: false, geoError: "" });
+    setAmbuState("idle");
+    setAmbuGeo({ lat: null, lon: null, address: "", geoLoading: false, geoError: "" });
+    setActiveLayer("estandar");
   };
 
+  const confirmarAmbu = () => {
+    if (!ambuGeo.lat) {
+      setAmbuGeo(g => ({
+        ...g,
+        geoError: "Debes compartir tu ubicación primero para que podamos encontrarte.",
+      }));
+      return;
+    }
+    setAmbuState("confirmed");
+  };
+
+  // ── Submit del formulario principal ─────────────────────────────────────
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError("");
@@ -152,8 +236,6 @@ export default function Emergencia() {
           especialidad: form.especialidad,
           motivo: form.motivo.trim(),
           email: form.email.trim() || undefined,
-          latitud:  geo.lat  ?? undefined,
-          longitud: geo.lon  ?? undefined,
         }),
       });
       const data = await res.json();
@@ -172,24 +254,44 @@ export default function Emergencia() {
     <div className="auth-scope">
       <LoadingOverlay visible={loading} />
 
+      {/* Animaciones Leaflet + ambulancia */}
+      <style>{`
+        @keyframes ambuPing {
+          0%   { transform: scale(1);   opacity: 1; }
+          75%  { transform: scale(2.4); opacity: 0; }
+          100% { transform: scale(2.4); opacity: 0; }
+        }
+        @keyframes ambuBounce {
+          0%, 100% { transform: translateY(0);    }
+          50%       { transform: translateY(-8px); }
+        }
+        @keyframes fadeSlide {
+          from { opacity: 0; transform: translateY(10px); }
+          to   { opacity: 1; transform: translateY(0);    }
+        }
+        .ambu-bounce { animation: ambuBounce 1.2s ease-in-out infinite; }
+        .fade-slide  { animation: fadeSlide .35s ease forwards; }
+      `}</style>
+
       <div className="flex min-h-screen w-full font-['Inter',sans-serif]">
 
-        {/* ── PANEL IZQUIERDO ── */}
-        <div className="hidden lg:flex lg:w-1/2 relative overflow-hidden" style={{ background: "linear-gradient(145deg, #004F5A 0%, #006B76 40%, #7f1d1d 100%)" }}>
-          {/* Imagen de fondo */}
+        {/* ── PANEL IZQUIERDO ─────────────────────────────────────────── */}
+        <div
+          className="hidden lg:flex lg:w-1/2 relative overflow-hidden"
+          style={{ background: "linear-gradient(145deg,#004F5A 0%,#006B76 40%,#7f1d1d 100%)" }}
+        >
           <div
             className="absolute inset-0 z-0 opacity-20 bg-center bg-no-repeat bg-cover"
             style={{ backgroundImage: "url('https://images.unsplash.com/photo-1516574187841-cb9cc2ca948b?q=80&w=2070&auto=format&fit=crop')" }}
           />
-          {/* Overlay gradient */}
-          <div className="absolute inset-0 z-10" style={{ background: "linear-gradient(to bottom right, rgba(0,79,90,0.85) 0%, rgba(127,29,29,0.6) 100%)" }} />
-
-          {/* Círculos decorativos */}
-          <div className="absolute top-[-80px] right-[-80px] w-80 h-80 rounded-full z-10" style={{ background: "rgba(239,68,68,0.15)" }} />
-          <div className="absolute bottom-[-60px] left-[-60px] w-64 h-64 rounded-full z-10" style={{ background: "rgba(0,107,118,0.25)" }} />
+          <div
+            className="absolute inset-0 z-10"
+            style={{ background: "linear-gradient(to bottom right,rgba(0,79,90,.85) 0%,rgba(127,29,29,.6) 100%)" }}
+          />
+          <div className="absolute top-[-80px] right-[-80px] w-80 h-80 rounded-full z-10" style={{ background: "rgba(239,68,68,.15)" }} />
+          <div className="absolute bottom-[-60px] left-[-60px] w-64 h-64 rounded-full z-10" style={{ background: "rgba(0,107,118,.25)" }} />
 
           <div className="relative z-20 flex flex-col justify-between p-16 w-full text-white h-full">
-            {/* Logo */}
             <div className="flex items-center gap-3">
               <div className="bg-white/15 p-2 rounded-xl backdrop-blur-md border border-white/20">
                 <span className="material-symbols-outlined text-white text-3xl">local_hospital</span>
@@ -197,31 +299,30 @@ export default function Emergencia() {
               <span className="text-2xl font-bold tracking-tight">MediConnect</span>
             </div>
 
-            {/* Central content */}
             <div>
-              {/* Badge pulsante */}
               <div className="inline-flex items-center gap-2 bg-red-600/90 backdrop-blur-sm px-4 py-2 rounded-full mb-6 border border-red-400/40">
                 <span className="material-symbols-outlined text-white text-base animate-pulse">emergency</span>
                 <span className="text-xs font-extrabold uppercase tracking-widest text-red-100">Línea de Emergencia</span>
               </div>
-
               <h1 className="text-5xl font-extrabold leading-tight mb-5">
                 Atención<br />
                 <span style={{ color: "#fca5a5" }}>Inmediata</span>
               </h1>
               <p className="text-lg text-white/80 max-w-sm leading-relaxed">
-                No necesitas cuenta. Llena el formulario y un doctor será asignado en segundos.
+                No necesitas cuenta. Llena el formulario o solicita una ambulancia directamente.
               </p>
-
-              {/* Steps */}
               <div className="mt-10 space-y-4">
                 {[
-                  { icon: "edit_note", label: "Completa los datos mínimos" },
-                  { icon: "person_add", label: "Se asigna un doctor disponible" },
-                  { icon: "medical_services", label: "Atención inmediata garantizada" },
+                  { icon: "edit_note",        label: "Completa los datos mínimos" },
+                  { icon: "person_add",        label: "Se asigna un doctor disponible" },
+                  { icon: "local_shipping",    label: "Solicita ambulancia con tu ubicación exacta" },
+                  { icon: "medical_services",  label: "Atención inmediata garantizada" },
                 ].map((step, i) => (
                   <div key={i} className="flex items-center gap-4">
-                    <div className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0" style={{ background: i === 0 ? "rgba(239,68,68,0.35)" : "rgba(255,255,255,0.12)" }}>
+                    <div
+                      className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0"
+                      style={{ background: i === 2 ? "rgba(239,68,68,.4)" : "rgba(255,255,255,.12)" }}
+                    >
                       <span className="material-symbols-outlined text-white text-base">{step.icon}</span>
                     </div>
                     <span className="text-sm font-semibold text-white/85">{step.label}</span>
@@ -230,7 +331,6 @@ export default function Emergencia() {
               </div>
             </div>
 
-            {/* Footer */}
             <div className="flex gap-8 text-sm font-medium text-white/60">
               <span className="flex items-center gap-2">
                 <span className="material-symbols-outlined text-sm">verified_user</span>
@@ -244,8 +344,8 @@ export default function Emergencia() {
           </div>
         </div>
 
-        {/* ── PANEL DERECHO ── */}
-        <div className="flex flex-col w-full lg:w-1/2 bg-white justify-center px-8 sm:px-16 lg:px-14 py-12 relative">
+        {/* ── PANEL DERECHO ───────────────────────────────────────────── */}
+        <div className="flex flex-col w-full lg:w-1/2 bg-white px-8 sm:px-14 lg:px-12 py-12 relative overflow-y-auto">
 
           {/* Mobile header */}
           <div className="lg:hidden flex items-center gap-3 mb-8">
@@ -269,186 +369,11 @@ export default function Emergencia() {
 
           <div className="max-w-md w-full mx-auto">
 
-            {!result ? (
-              <>
-                {/* Header del formulario */}
-                <div className="mb-8">
-                  <div className="inline-flex items-center gap-2 bg-red-50 border border-red-200 px-3 py-1.5 rounded-full mb-4">
-                    <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse inline-block"></span>
-                    <span className="text-xs font-extrabold text-red-600 uppercase tracking-widest">Emergencia activa</span>
-                  </div>
-                  <h2 className="text-3xl font-extrabold text-slate-900 tracking-tight mb-2">Solicitar atención</h2>
-                  <p className="text-slate-500 text-sm leading-relaxed">
-                    Un doctor será asignado <span className="font-bold text-slate-700">inmediatamente</span> al enviar. No necesitas iniciar sesión.
-                  </p>
-                </div>
-
-                <form onSubmit={handleSubmit} className="space-y-5">
-                  {/* Nombre */}
-                  <div>
-                    <label className="text-xs font-bold text-slate-500 uppercase tracking-widest block mb-1.5">
-                      Nombre del Paciente <span className="text-red-500">*</span>
-                    </label>
-                    <div className="relative">
-                      <span className="material-symbols-outlined absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 text-[18px]">person</span>
-                      <input
-                        type="text"
-                        className="w-full border border-slate-200 bg-white rounded-xl py-3 pl-10 pr-4 focus:border-red-400 focus:ring-2 focus:ring-red-100 transition-all text-sm outline-none font-medium placeholder:text-slate-400"
-                        placeholder='"Juan Pérez" o "No identificado"'
-                        value={form.nombre}
-                        onChange={e => setForm(f => ({ ...f, nombre: e.target.value }))}
-                        required
-                      />
-                    </div>
-                  </div>
-
-                  {/* Especialidad */}
-                  <div>
-                    <label className="text-xs font-bold text-slate-500 uppercase tracking-widest block mb-1.5">
-                      Especialidad Requerida <span className="text-red-500">*</span>
-                    </label>
-                    <div className="relative">
-                      <span className="material-symbols-outlined absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 text-[18px]">medical_services</span>
-                      <select
-                        className="w-full border border-slate-200 bg-white rounded-xl py-3 pl-10 pr-4 focus:border-red-400 focus:ring-2 focus:ring-red-100 transition-all text-sm outline-none font-medium appearance-none"
-                        value={form.especialidad}
-                        onChange={e => setForm(f => ({ ...f, especialidad: e.target.value }))}
-                        required
-                      >
-                        <option value="">Seleccione especialidad...</option>
-                        {ESPECIALIDADES.map(e => <option key={e} value={e}>{e}</option>)}
-                      </select>
-                    </div>
-                  </div>
-
-                  {/* Motivo */}
-                  <div>
-                    <label className="text-xs font-bold text-slate-500 uppercase tracking-widest block mb-1.5">
-                      Motivo / Síntomas <span className="text-red-500">*</span>
-                    </label>
-                    <textarea
-                      className={`${inputCls} resize-none`}
-                      rows={3}
-                      placeholder="Describe brevemente el motivo de la emergencia..."
-                      value={form.motivo}
-                      onChange={e => setForm(f => ({ ...f, motivo: e.target.value }))}
-                      required
-                    />
-                  </div>
-
-                  {/* Email opcional */}
-                  <div className="bg-[#E0F5F7]/60 border border-[#B2E5E8] rounded-xl p-4">
-                    <label className="text-xs font-bold text-[#006B76] uppercase tracking-widest block mb-1.5">
-                      ¿Ya tienes cuenta? <span className="text-slate-400 normal-case font-medium">— Ingresa tu correo (opcional)</span>
-                    </label>
-                    <div className="relative">
-                      <span className="material-symbols-outlined absolute left-3.5 top-1/2 -translate-y-1/2 text-[#006B76]/60 text-[18px]">email</span>
-                      <input
-                        type="email"
-                        className="w-full border border-[#B2E5E8] bg-white rounded-xl py-3 pl-10 pr-4 focus:border-[#006B76] focus:ring-2 focus:ring-[#006B76]/20 transition-all text-sm outline-none font-medium placeholder:text-slate-400"
-                        placeholder="tucorreo@ejemplo.com"
-                        value={form.email}
-                        onChange={e => setForm(f => ({ ...f, email: e.target.value }))}
-                      />
-                    </div>
-                  </div>
-
-                  {/* ── Geolocalización ── */}
-                  <div className="border border-slate-200 rounded-xl overflow-hidden">
-                    <div className="flex items-center justify-between px-4 py-3 bg-slate-50 border-b border-slate-200">
-                      <div className="flex items-center gap-2">
-                        <span className="material-symbols-outlined text-slate-500 text-[18px]">location_on</span>
-                        <span className="text-xs font-bold text-slate-600 uppercase tracking-widest">Ubicación</span>
-                        <span className="text-xs text-slate-400 font-normal normal-case">— ayuda a enviar ayuda más rápido</span>
-                      </div>
-                      {geo.lat === null ? (
-                        <button
-                          type="button"
-                          onClick={solicitarUbicacion}
-                          disabled={geo.geoLoading}
-                          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[12px] font-semibold bg-red-600 text-white hover:bg-red-700 disabled:opacity-60 transition-colors"
-                        >
-                          {geo.geoLoading ? (
-                            <>
-                              <svg className="w-3.5 h-3.5 animate-spin" viewBox="0 0 24 24" fill="none">
-                                <circle cx="12" cy="12" r="9" stroke="currentColor" strokeWidth="2" opacity=".25"/>
-                                <path d="M12 3a9 9 0 0 1 9 9" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
-                              </svg>
-                              Obteniendo…
-                            </>
-                          ) : (
-                            <>
-                              <span className="material-symbols-outlined text-[14px]">my_location</span>
-                              Compartir mi ubicación
-                            </>
-                          )}
-                        </button>
-                      ) : (
-                        <button
-                          type="button"
-                          onClick={limpiarUbicacion}
-                          className="text-[12px] font-medium text-slate-400 hover:text-red-600 transition-colors"
-                        >
-                          Eliminar
-                        </button>
-                      )}
-                    </div>
-
-                    {/* Error geo */}
-                    {geo.geoError && (
-                      <div className="px-4 py-3 text-[12px] text-red-600 font-medium bg-red-50 flex items-center gap-2">
-                        <span className="material-symbols-outlined text-[14px]">error</span>
-                        {geo.geoError}
-                      </div>
-                    )}
-
-                    {/* Mapa + dirección */}
-                    {geo.lat !== null && (
-                      <div>
-                        {/* Dirección textual */}
-                        <div className="px-4 py-2.5 flex items-start gap-2 border-b border-slate-100">
-                          <span className="material-symbols-outlined text-emerald-500 text-[16px] mt-0.5 shrink-0">check_circle</span>
-                          <p className="text-[12px] text-slate-600 leading-relaxed">
-                            {geo.address || `${geo.lat.toFixed(5)}, ${geo.lon.toFixed(5)}`}
-                          </p>
-                        </div>
-                        {/* Contenedor mapa Leaflet */}
-                        <div
-                          ref={mapRef}
-                          style={{ height: "220px", width: "100%", zIndex: 0 }}
-                        />
-                      </div>
-                    )}
-
-                    {/* Estado vacío */}
-                    {geo.lat === null && !geo.geoError && !geo.geoLoading && (
-                      <div className="px-4 py-4 text-center text-[12px] text-slate-400">
-                        Presiona el botón para compartir tu ubicación exacta
-                      </div>
-                    )}
-                  </div>
-
-                  {error && (
-                    <div className="flex items-center gap-2 bg-red-50 border border-red-200 text-red-700 rounded-xl px-4 py-3 text-sm font-semibold">
-                      <span className="material-symbols-outlined text-base">error</span>
-                      {error}
-                    </div>
-                  )}
-
-                  <button
-                    type="submit"
-                    className="w-full bg-red-600 hover:bg-red-700 text-white py-4 rounded-xl font-black text-base flex items-center justify-center gap-2 shadow-lg shadow-red-200 transition-all active:scale-[0.98]"
-                  >
-                    <span className="material-symbols-outlined">emergency</span>
-                    Solicitar Atención de Emergencia
-                  </button>
-                </form>
-              </>
-
-            ) : (
-              /* ── TARJETA DE CONFIRMACIÓN ── */
-              <div>
-                {/* Header confirmación */}
+            {/* ════════════════════════════════════════════════════════
+                PANTALLA RESULTADO (doctor asignado)
+            ════════════════════════════════════════════════════════ */}
+            {result ? (
+              <div className="fade-slide">
                 <div className="text-center mb-8">
                   <div className="relative inline-flex mb-5">
                     <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-[#006B76] to-[#004F5A] flex items-center justify-center shadow-lg shadow-[#84D4D9]">
@@ -481,28 +406,13 @@ export default function Emergencia() {
                       </div>
                       <div>
                         <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">Hora de Registro</p>
-                        <p className="text-sm font-extrabold text-slate-800">{new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</p>
+                        <p className="text-sm font-extrabold text-slate-800">
+                          {new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                        </p>
                       </div>
                     </div>
                   </div>
                 </div>
-
-                {/* Ubicación registrada */}
-                {geo.lat !== null && (
-                  <div className="bg-slate-50 border border-slate-200 rounded-2xl overflow-hidden mb-5">
-                    <div className="px-4 py-3 flex items-center gap-2 border-b border-slate-200">
-                      <span className="material-symbols-outlined text-emerald-500 text-[18px]">location_on</span>
-                      <p className="text-[10px] font-extrabold text-slate-600 uppercase tracking-widest">Ubicación enviada</p>
-                    </div>
-                    {geo.address && (
-                      <p className="px-4 py-2 text-[12px] text-slate-600 border-b border-slate-100">{geo.address}</p>
-                    )}
-                    <div
-                      ref={mapRef}
-                      style={{ height: "180px", width: "100%", zIndex: 0 }}
-                    />
-                  </div>
-                )}
 
                 {/* Código de emergencia */}
                 {result.esNuevo && result.codigoEmergencia && (
@@ -526,7 +436,7 @@ export default function Emergencia() {
                       Copiar código
                     </button>
                     <p className="text-[11px] text-slate-600 leading-relaxed text-center">
-                      <span className="font-bold">Guarda este código.</span> Si pierdes la sesión, podrás volver a entrar a tu perfil ingresándolo en el login.
+                      <span className="font-bold">Guarda este código.</span> Úsalo en el login para volver a entrar.
                       <span className="block mt-1 text-slate-500">Por seguridad solo puede usarse <span className="font-bold">3 veces</span>.</span>
                     </p>
                   </div>
@@ -535,13 +445,10 @@ export default function Emergencia() {
                 <div className="flex flex-col gap-3">
                   <button
                     onClick={() => {
-                      // Auto-login: guardar sesión y entrar al perfil
-                      localStorage.setItem("userId", result.pacienteId);
+                      localStorage.setItem("userId",   result.pacienteId);
                       localStorage.setItem("userName", result.pacienteNombre || "Paciente");
                       localStorage.setItem("userRole", "paciente");
-                      if (result.codigoEmergencia) {
-                        localStorage.setItem("codigoEmergencia", result.codigoEmergencia);
-                      }
+                      if (result.codigoEmergencia) localStorage.setItem("codigoEmergencia", result.codigoEmergencia);
                       navigate("/paciente");
                     }}
                     className="w-full bg-[#006B76] hover:bg-[#004F5A] text-white py-3.5 rounded-xl font-bold text-sm flex items-center justify-center gap-2 transition-colors shadow-md shadow-[#84D4D9]/40"
@@ -550,13 +457,336 @@ export default function Emergencia() {
                     Entrar a mi perfil
                   </button>
                   <button
-                    onClick={() => { setResult(null); setForm({ nombre: "", especialidad: "", motivo: "", email: "" }); limpiarUbicacion(); }}
+                    onClick={() => { setResult(null); setForm({ nombre: "", especialidad: "", motivo: "", email: "" }); }}
                     className="w-full border border-slate-200 text-slate-600 hover:bg-slate-50 py-3.5 rounded-xl font-semibold text-sm transition-colors"
                   >
                     Registrar otra emergencia
                   </button>
                 </div>
               </div>
+
+            ) : (
+              /* ════════════════════════════════════════════════════════
+                 FORMULARIO + SECCIÓN AMBULANCIA
+              ════════════════════════════════════════════════════════ */
+              <>
+                {/* Título */}
+                <div className="mb-8">
+                  <div className="inline-flex items-center gap-2 bg-red-50 border border-red-200 px-3 py-1.5 rounded-full mb-4">
+                    <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse inline-block" />
+                    <span className="text-xs font-extrabold text-red-600 uppercase tracking-widest">Emergencia activa</span>
+                  </div>
+                  <h2 className="text-3xl font-extrabold text-slate-900 tracking-tight mb-2">Solicitar atención</h2>
+                  <p className="text-slate-500 text-sm leading-relaxed">
+                    Un doctor será asignado <span className="font-bold text-slate-700">inmediatamente</span> al enviar.
+                  </p>
+                </div>
+
+                {/* ── Formulario principal ── */}
+                <form onSubmit={handleSubmit} className="space-y-5">
+                  <div>
+                    <label className="text-xs font-bold text-slate-500 uppercase tracking-widest block mb-1.5">
+                      Nombre del Paciente <span className="text-red-500">*</span>
+                    </label>
+                    <div className="relative">
+                      <span className="material-symbols-outlined absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 text-[18px]">person</span>
+                      <input
+                        type="text"
+                        className="w-full border border-slate-200 bg-white rounded-xl py-3 pl-10 pr-4 focus:border-red-400 focus:ring-2 focus:ring-red-100 transition-all text-sm outline-none font-medium placeholder:text-slate-400"
+                        placeholder='"Juan Pérez" o "No identificado"'
+                        value={form.nombre}
+                        onChange={e => setForm(f => ({ ...f, nombre: e.target.value }))}
+                        required
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="text-xs font-bold text-slate-500 uppercase tracking-widest block mb-1.5">
+                      Especialidad Requerida <span className="text-red-500">*</span>
+                    </label>
+                    <div className="relative">
+                      <span className="material-symbols-outlined absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 text-[18px]">medical_services</span>
+                      <select
+                        className="w-full border border-slate-200 bg-white rounded-xl py-3 pl-10 pr-4 focus:border-red-400 focus:ring-2 focus:ring-red-100 transition-all text-sm outline-none font-medium appearance-none"
+                        value={form.especialidad}
+                        onChange={e => setForm(f => ({ ...f, especialidad: e.target.value }))}
+                        required
+                      >
+                        <option value="">Seleccione especialidad...</option>
+                        {ESPECIALIDADES.map(e => <option key={e} value={e}>{e}</option>)}
+                      </select>
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="text-xs font-bold text-slate-500 uppercase tracking-widest block mb-1.5">
+                      Motivo / Síntomas <span className="text-red-500">*</span>
+                    </label>
+                    <textarea
+                      className={`${inputCls} resize-none`}
+                      rows={3}
+                      placeholder="Describe brevemente el motivo de la emergencia..."
+                      value={form.motivo}
+                      onChange={e => setForm(f => ({ ...f, motivo: e.target.value }))}
+                      required
+                    />
+                  </div>
+
+                  <div className="bg-[#E0F5F7]/60 border border-[#B2E5E8] rounded-xl p-4">
+                    <label className="text-xs font-bold text-[#006B76] uppercase tracking-widest block mb-1.5">
+                      ¿Ya tienes cuenta?{" "}
+                      <span className="text-slate-400 normal-case font-medium">— Ingresa tu correo (opcional)</span>
+                    </label>
+                    <div className="relative">
+                      <span className="material-symbols-outlined absolute left-3.5 top-1/2 -translate-y-1/2 text-[#006B76]/60 text-[18px]">email</span>
+                      <input
+                        type="email"
+                        className="w-full border border-[#B2E5E8] bg-white rounded-xl py-3 pl-10 pr-4 focus:border-[#006B76] focus:ring-2 focus:ring-[#006B76]/20 transition-all text-sm outline-none font-medium placeholder:text-slate-400"
+                        placeholder="tucorreo@ejemplo.com"
+                        value={form.email}
+                        onChange={e => setForm(f => ({ ...f, email: e.target.value }))}
+                      />
+                    </div>
+                  </div>
+
+                  {error && (
+                    <div className="flex items-center gap-2 bg-red-50 border border-red-200 text-red-700 rounded-xl px-4 py-3 text-sm font-semibold">
+                      <span className="material-symbols-outlined text-base">error</span>
+                      {error}
+                    </div>
+                  )}
+
+                  <button
+                    type="submit"
+                    className="w-full bg-red-600 hover:bg-red-700 text-white py-4 rounded-xl font-black text-base flex items-center justify-center gap-2 shadow-lg shadow-red-200 transition-all active:scale-[0.98]"
+                  >
+                    <span className="material-symbols-outlined">emergency</span>
+                    Solicitar Atención de Emergencia
+                  </button>
+                </form>
+
+                {/* ══════════════════════════════════════════
+                    SECCIÓN AMBULANCIA
+                ══════════════════════════════════════════ */}
+                <div className="mt-6">
+
+                  {/* ── Estado IDLE: botón de entrada ── */}
+                  {ambuState === "idle" && (
+                    <div className="fade-slide border-2 border-dashed border-slate-200 hover:border-red-300 rounded-2xl p-6 text-center transition-colors">
+                      <div className="text-4xl mb-3 ambu-bounce select-none">🚑</div>
+                      <p className="font-extrabold text-slate-800 text-base mb-1">¿Necesitas una ambulancia?</p>
+                      <p className="text-xs text-slate-400 mb-5 leading-relaxed">
+                        Compartiremos tu ubicación GPS exacta para despachar una unidad lo antes posible.
+                      </p>
+                      <button
+                        type="button"
+                        onClick={() => setAmbuState("map")}
+                        className="inline-flex items-center gap-2 px-6 py-3 bg-red-600 hover:bg-red-700 text-white font-bold text-sm rounded-xl transition-colors shadow-md shadow-red-200 active:scale-[0.97]"
+                      >
+                        <span className="material-symbols-outlined text-base">local_shipping</span>
+                        Pedir Ambulancia
+                      </button>
+                    </div>
+                  )}
+
+                  {/* ── Estado MAP: mapa + confirmación ── */}
+                  {ambuState === "map" && (
+                    <div className="fade-slide border border-red-200 rounded-2xl overflow-hidden shadow-sm">
+                      {/* Header */}
+                      <div className="bg-red-600 px-5 py-4 flex items-center gap-3">
+                        <span className="text-2xl">🚑</span>
+                        <div className="flex-1">
+                          <p className="font-black text-white text-base leading-none">Pedir Ambulancia</p>
+                          <p className="text-red-100 text-xs mt-0.5">Compartiremos tu ubicación exacta al despachar la unidad</p>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={cancelarAmbu}
+                          className="text-red-200 hover:text-white transition-colors"
+                        >
+                          <span className="material-symbols-outlined text-xl">close</span>
+                        </button>
+                      </div>
+
+                      {/* Obtener ubicación */}
+                      <div className="px-5 py-4 bg-white border-b border-red-100">
+                        {ambuGeo.lat === null ? (
+                          <button
+                            type="button"
+                            onClick={solicitarUbicacion}
+                            disabled={ambuGeo.geoLoading}
+                            className="w-full flex items-center justify-center gap-2 py-3 rounded-xl border-2 border-dashed border-red-300 text-red-600 font-bold text-sm hover:bg-red-50 disabled:opacity-60 transition-colors"
+                          >
+                            {ambuGeo.geoLoading ? (
+                              <>
+                                <svg className="w-4 h-4 animate-spin" viewBox="0 0 24 24" fill="none">
+                                  <circle cx="12" cy="12" r="9" stroke="currentColor" strokeWidth="2" opacity=".25" />
+                                  <path d="M12 3a9 9 0 0 1 9 9" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+                                </svg>
+                                Obteniendo tu ubicación…
+                              </>
+                            ) : (
+                              <>
+                                <span className="material-symbols-outlined text-[18px]">my_location</span>
+                                Obtener mi ubicación GPS
+                              </>
+                            )}
+                          </button>
+                        ) : (
+                          <div className="flex items-start gap-3">
+                            <div className="w-8 h-8 rounded-full bg-emerald-100 flex items-center justify-center shrink-0 mt-0.5">
+                              <span className="material-symbols-outlined text-emerald-600 text-[16px]">check</span>
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <p className="text-xs font-bold text-emerald-700 uppercase tracking-widest mb-0.5">Ubicación obtenida</p>
+                              <p className="text-[12px] text-slate-600 leading-relaxed">{ambuGeo.address}</p>
+                            </div>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setAmbuGeo(g => ({ ...g, lat: null, lon: null, address: "" }));
+                                if (ambuLeafRef.current) {
+                                  ambuLeafRef.current.remove();
+                                  ambuLeafRef.current = null;
+                                  ambuMarkerRef.current = null;
+                                  ambuTileRef.current = null;
+                                }
+                              }}
+                              className="text-slate-300 hover:text-red-500 transition-colors shrink-0"
+                            >
+                              <span className="material-symbols-outlined text-[18px]">refresh</span>
+                            </button>
+                          </div>
+                        )}
+
+                        {ambuGeo.geoError && (
+                          <div className="mt-3 flex items-start gap-2 bg-red-50 border border-red-200 rounded-xl px-3 py-2.5">
+                            <span className="material-symbols-outlined text-red-500 text-[16px] shrink-0 mt-0.5">error</span>
+                            <p className="text-[12px] text-red-600 font-medium leading-relaxed">{ambuGeo.geoError}</p>
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Mapa con selector de capas */}
+                      {ambuGeo.lat !== null && (
+                        <div>
+                          {/* Selector de capas */}
+                          <div className="flex items-center gap-2 px-4 py-3 bg-slate-50 border-b border-slate-100">
+                            <span className="material-symbols-outlined text-slate-400 text-[16px]">layers</span>
+                            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mr-1">Capa</span>
+                            {Object.entries(TILE_LAYERS).map(([key, tl]) => (
+                              <button
+                                key={key}
+                                type="button"
+                                onClick={() => switchLayer(key)}
+                                className={`flex items-center gap-1.5 px-3 py-1 rounded-full text-[12px] font-semibold transition-all ${
+                                  activeLayer === key
+                                    ? "bg-slate-900 text-white shadow-sm"
+                                    : "bg-white border border-slate-200 text-slate-600 hover:border-slate-300"
+                                }`}
+                              >
+                                <span className="material-symbols-outlined text-[13px]">{tl.icon}</span>
+                                {tl.label}
+                              </button>
+                            ))}
+                          </div>
+
+                          {/* Contenedor del mapa */}
+                          <div
+                            ref={ambuMapRef}
+                            style={{ height: "260px", width: "100%", zIndex: 0 }}
+                          />
+                        </div>
+                      )}
+
+                      {/* Botones de acción */}
+                      <div className="px-5 py-4 bg-white flex gap-3">
+                        <button
+                          type="button"
+                          onClick={cancelarAmbu}
+                          className="flex-1 py-3 border border-slate-200 text-slate-600 hover:bg-slate-50 rounded-xl font-semibold text-sm transition-colors"
+                        >
+                          Cancelar
+                        </button>
+                        <button
+                          type="button"
+                          onClick={confirmarAmbu}
+                          className="flex-1 py-3 bg-red-600 hover:bg-red-700 text-white rounded-xl font-black text-sm flex items-center justify-center gap-2 transition-colors shadow-md shadow-red-200 active:scale-[0.97]"
+                        >
+                          <span className="material-symbols-outlined text-base">local_shipping</span>
+                          Confirmar — Enviar Ambulancia
+                        </button>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* ── Estado CONFIRMED: ambulancia en camino ── */}
+                  {ambuState === "confirmed" && (
+                    <div className="fade-slide border-2 border-emerald-200 rounded-2xl overflow-hidden shadow-sm bg-gradient-to-b from-emerald-50 to-white">
+                      {/* Header */}
+                      <div className="bg-emerald-500 px-5 py-5 text-center">
+                        <div className="text-5xl ambu-bounce mb-2 select-none">🚑</div>
+                        <h3 className="text-xl font-black text-white leading-none">¡Ambulancia en Camino!</h3>
+                        <p className="text-emerald-100 text-xs mt-1.5 font-semibold">
+                          Una unidad fue despachada a tu ubicación
+                        </p>
+                      </div>
+
+                      {/* Pasos de estado */}
+                      <div className="px-5 pt-5 pb-4 space-y-3">
+                        {[
+                          { done: true,  icon: "check_circle",   color: "text-emerald-500", label: "Solicitud recibida",             sub: "Sistema confirmado" },
+                          { done: true,  icon: "local_shipping",  color: "text-emerald-500", label: "Unidad despachada",              sub: "En ruta hacia ti" },
+                          { done: false, icon: "schedule",        color: "text-amber-500",   label: "Tiempo estimado: 8 – 12 min",   sub: "Según tráfico actual" },
+                        ].map((item, i) => (
+                          <div key={i} className="flex items-center gap-4 bg-white rounded-xl px-4 py-3 border border-slate-100">
+                            <span className={`material-symbols-outlined text-[22px] shrink-0 ${item.color}`}
+                              style={item.done ? { fontVariationSettings: "'FILL' 1" } : {}}>
+                              {item.icon}
+                            </span>
+                            <div className="flex-1 min-w-0">
+                              <p className="text-[13px] font-bold text-slate-800 leading-none">{item.label}</p>
+                              <p className="text-[11px] text-slate-400 mt-0.5">{item.sub}</p>
+                            </div>
+                          </div>
+                        ))}
+
+                        {/* Dirección */}
+                        {ambuGeo.address && (
+                          <div className="flex items-start gap-3 bg-white rounded-xl px-4 py-3 border border-slate-100">
+                            <span className="material-symbols-outlined text-red-500 text-[20px] shrink-0">location_on</span>
+                            <div className="min-w-0">
+                              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-0.5">Dirección confirmada</p>
+                              <p className="text-[12px] text-slate-600 leading-relaxed">{ambuGeo.address}</p>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Nota + botón */}
+                      <div className="px-5 pb-5">
+                        <div className="flex items-start gap-2 bg-amber-50 border border-amber-200 rounded-xl px-4 py-3 mb-4">
+                          <span className="material-symbols-outlined text-amber-500 text-[18px] shrink-0 mt-0.5">info</span>
+                          <p className="text-[12px] text-amber-700 font-medium leading-relaxed">
+                            Mantén tu teléfono disponible. El conductor puede contactarte al llegar cerca.
+                          </p>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={cancelarAmbu}
+                          className="w-full py-3 bg-slate-900 hover:bg-slate-800 text-white rounded-xl font-bold text-sm transition-colors"
+                        >
+                          Entendido
+                        </button>
+                      </div>
+                    </div>
+                  )}
+
+                </div>
+                {/* fin sección ambulancia */}
+
+              </>
             )}
           </div>
         </div>
