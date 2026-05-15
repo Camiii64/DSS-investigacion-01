@@ -6,6 +6,7 @@ const cors = require("cors");
 require("dotenv").config();
 const bcrypt = require("bcrypt");
 const saltRounds = 10;
+const { enviarCorreo, plantillaCodigoEmergencia, plantillaResetPassword } = require("./mailer");
 
 const app = express();
 
@@ -482,6 +483,17 @@ app.post("/emergencia", async (req, res) => {
       [pacienteId, doctorId, fechaAhora, motivo]
     );
 
+    // Si el paciente dio un email REAL (no temporal) Y se generó un código, mándaselo por correo.
+    // No bloqueamos la respuesta: si el envío falla, igual devolvemos éxito al cliente.
+    const emailReal = email && !email.endsWith("@mediconnect.tmp");
+    if (emailReal && codigoEmergencia) {
+      enviarCorreo({
+        to: email,
+        subject: "Tu código de acceso de emergencia — MediConnect",
+        html: plantillaCodigoEmergencia({ nombre: pacienteNombre, codigo: codigoEmergencia, doctorNombre }),
+      }).catch(e => console.error("Fallo enviando correo de emergencia:", e.message));
+    }
+
     res.json({
       success: true,
       pacienteId,
@@ -540,6 +552,126 @@ app.post("/login-codigo", async (req, res) => {
     });
   } catch (error) {
     console.error("Error en login por código:", error);
+    res.status(500).json({ success: false, message: "Error interno del servidor" });
+  }
+});
+
+// ==========================================
+// 🔁 RECUPERACIÓN DE CONTRASEÑA (3 pasos)
+// ==========================================
+
+// 1/3 — Solicitar código: el usuario manda su email
+app.post("/password-reset/request", async (req, res) => {
+  const { email } = req.body;
+  if (!email) return res.status(400).json({ success: false, message: "Email requerido" });
+  try {
+    const [rows] = await dbPromise.query(
+      "SELECT id, nombre FROM usuarios WHERE email = ? LIMIT 1",
+      [email]
+    );
+    if (rows.length === 0) {
+      return res.json({ success: false, message: "No se encontró una cuenta con ese correo." });
+    }
+    const u = rows[0];
+    const codigo = String(Math.floor(100000 + Math.random() * 900000));
+    const expira = new Date(Date.now() + 15 * 60 * 1000); // 15 min
+
+    await dbPromise.query(
+      "UPDATE usuarios SET reset_codigo = ?, reset_expira = ? WHERE id = ?",
+      [codigo, expira, u.id]
+    );
+
+    // Envío no bloqueante
+    enviarCorreo({
+      to: email,
+      subject: "Código de recuperación — MediConnect",
+      html: plantillaResetPassword({ nombre: u.nombre, codigo }),
+    }).catch(e => console.error("Fallo enviando reset:", e.message));
+
+    res.json({ success: true, message: "Te enviamos un código de 6 dígitos a tu correo." });
+  } catch (error) {
+    console.error("Error en password-reset/request:", error);
+    res.status(500).json({ success: false, message: "Error interno del servidor" });
+  }
+});
+
+// 2/3 — Verificar código (opcional, para validar antes de pedir nueva contraseña)
+app.post("/password-reset/verify", async (req, res) => {
+  const { email, codigo } = req.body;
+  if (!email || !codigo) return res.status(400).json({ success: false, message: "Datos faltantes" });
+  try {
+    const [rows] = await dbPromise.query(
+      "SELECT id, reset_expira FROM usuarios WHERE email = ? AND reset_codigo = ? LIMIT 1",
+      [email, String(codigo)]
+    );
+    if (rows.length === 0) {
+      return res.json({ success: false, message: "Código incorrecto." });
+    }
+    if (!rows[0].reset_expira || new Date(rows[0].reset_expira) < new Date()) {
+      return res.json({ success: false, message: "El código expiró. Solicita uno nuevo." });
+    }
+    res.json({ success: true });
+  } catch (error) {
+    console.error("Error en password-reset/verify:", error);
+    res.status(500).json({ success: false, message: "Error interno del servidor" });
+  }
+});
+
+// 3/3 — Confirmar: cambia la contraseña
+app.post("/password-reset/confirm", async (req, res) => {
+  const { email, codigo, nuevaPassword } = req.body;
+  if (!email || !codigo || !nuevaPassword) {
+    return res.status(400).json({ success: false, message: "Datos faltantes" });
+  }
+  if (nuevaPassword.length < 6) {
+    return res.json({ success: false, message: "La contraseña debe tener al menos 6 caracteres." });
+  }
+  try {
+    const [rows] = await dbPromise.query(
+      "SELECT id, reset_expira FROM usuarios WHERE email = ? AND reset_codigo = ? LIMIT 1",
+      [email, String(codigo)]
+    );
+    if (rows.length === 0) {
+      return res.json({ success: false, message: "Código incorrecto." });
+    }
+    if (!rows[0].reset_expira || new Date(rows[0].reset_expira) < new Date()) {
+      return res.json({ success: false, message: "El código expiró. Solicita uno nuevo." });
+    }
+    const hashed = await bcrypt.hash(nuevaPassword, saltRounds);
+    await dbPromise.query(
+      "UPDATE usuarios SET password = ?, reset_codigo = NULL, reset_expira = NULL WHERE id = ?",
+      [hashed, rows[0].id]
+    );
+    res.json({ success: true });
+  } catch (error) {
+    console.error("Error en password-reset/confirm:", error);
+    res.status(500).json({ success: false, message: "Error interno del servidor" });
+  }
+});
+
+// REENVIAR CÓDIGO DE EMERGENCIA POR CORREO
+app.post("/emergencia/reenviar-codigo", async (req, res) => {
+  const { email } = req.body;
+  if (!email) return res.status(400).json({ success: false, message: "Email requerido" });
+  try {
+    const [rows] = await dbPromise.query(
+      "SELECT id, nombre, codigo_emergencia FROM usuarios WHERE email = ? AND rol = 'PACIENTE' LIMIT 1",
+      [email]
+    );
+    if (rows.length === 0 || !rows[0].codigo_emergencia) {
+      return res.json({ success: false, message: "No se encontró un código activo para ese correo." });
+    }
+    const u = rows[0];
+
+    enviarCorreo({
+      to: email,
+      subject: "Tu código de acceso de emergencia — MediConnect",
+      html: plantillaCodigoEmergencia({ nombre: u.nombre, codigo: u.codigo_emergencia, doctorNombre: "—" }),
+    }).catch(e => console.error("Fallo reenviando código:", e.message));
+
+    res.json({ success: true, message: "Te reenviamos el código a tu correo." });
+  } catch (error) {
+    console.error("Error en reenviar-codigo:", error);
     res.status(500).json({ success: false, message: "Error interno del servidor" });
   }
 });
