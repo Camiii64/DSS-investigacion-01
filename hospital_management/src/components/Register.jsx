@@ -6,6 +6,13 @@ import {
   validatePassword, validateNombre, maxBirthDate, minBirthDate,
 } from "../utils/validations";
 
+const CrossLogo = ({ size = 22, color = "#0F172A" }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+    <rect x="9" y="0" width="6" height="24" rx="1.5" fill={color} />
+    <rect x="0" y="9" width="24" height="6" rx="1.5" fill={color} />
+  </svg>
+);
+
 function Register() {
   const navigate = useNavigate();
 
@@ -24,11 +31,17 @@ function Register() {
   const [success, setSuccess] = useState("");
   const [fieldErrors, setFieldErrors] = useState({});
 
+  const inputCls = (hasErr = false) =>
+    `w-full text-[14px] text-slate-900 placeholder:text-slate-400 bg-transparent border-b ${
+      hasErr ? "border-red-400" : "border-slate-200"
+    } focus:border-slate-900 py-2.5 transition-colors outline-none`;
+
+  const labelCls = "font-mono text-[10px] tracking-[0.22em] uppercase text-slate-400 block mb-1.5";
+
   const handleChange = (e) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
-    // Limpiar el error del campo al editar
     if (fieldErrors[e.target.name]) {
-      setFieldErrors(prev => ({ ...prev, [e.target.name]: null }));
+      setFieldErrors((prev) => ({ ...prev, [e.target.name]: null }));
     }
     setError("");
   };
@@ -55,11 +68,9 @@ function Register() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(formData),
       });
-
       const data = await response.json();
-
       if (response.ok && data.success) {
-        setSuccess("Paciente registrado correctamente. Redirigiendo...");
+        setSuccess("Cuenta creada correctamente. Redirigiendo...");
         setTimeout(() => navigate("/login"), 1500);
       } else {
         setError(data.message || "Error al registrar. Inténtalo de nuevo.");
@@ -71,239 +82,179 @@ function Register() {
     }
   };
 
-  const FErr = ({ name }) => fieldErrors[name]
-    ? <p className="mt-1.5 ml-1 text-xs font-semibold text-red-500 flex items-center gap-1">
-        <span className="material-symbols-outlined text-sm">error</span>{fieldErrors[name]}
-      </p>
-    : null;
+  const FErr = ({ name }) =>
+    fieldErrors[name] ? (
+      <p className="mt-1 text-[11px] text-red-500">{fieldErrors[name]}</p>
+    ) : null;
 
   return (
-    <div className="auth-scope">
-      <div className="flex min-h-screen w-full font-['Inter',sans-serif] bg-[#f0fafb] dark:bg-[#001F23]">
+    <div className="flex min-h-screen font-['Inter',sans-serif]">
 
-        {/* PANEL IZQUIERDO */}
-        <div className="hidden lg:flex lg:w-1/2 relative overflow-hidden bg-[#006B76]">
-          <div
-            className="absolute inset-0 z-0 opacity-40 bg-center bg-no-repeat bg-cover"
-            style={{
-              backgroundImage:
-                "url('https://images.unsplash.com/photo-1519494026892-80bbd2d6fd0d?q=80&w=2053&auto=format&fit=crop')",
-            }}
-          ></div>
-          <div className="absolute inset-0 z-10 bg-gradient-to-br from-[#006B76]/80 to-[#006B76]/40"></div>
-          <div className="relative z-20 flex flex-col justify-between p-16 w-full text-white h-full">
-            <div className="flex items-center gap-3">
-              <div className="bg-white/20 p-2 rounded-lg backdrop-blur-md">
-                <span className="material-symbols-outlined text-white text-3xl">local_hospital</span>
-              </div>
-              <span className="text-2xl font-bold tracking-tight">MediConnect</span>
-            </div>
-            <div>
-              <h1 className="text-5xl font-extrabold leading-tight mb-6">
-                Sistema de Gestión Hospitalaria
-              </h1>
-              <p className="text-xl text-white/90 max-w-lg leading-relaxed">
-                Administra citas, doctores y pacientes en una plataforma segura y unificada.
-              </p>
-            </div>
-            <div className="flex gap-8 text-sm font-medium text-white/70">
-              <span className="flex items-center gap-2">
-                <span className="material-symbols-outlined text-sm">verified_user</span>
-                Acceso Seguro
-              </span>
-              <span className="flex items-center gap-2">
-                <span className="material-symbols-outlined text-sm">lock</span>
-                Datos Encriptados
-              </span>
-            </div>
-          </div>
+      {/* ── PANEL IZQUIERDO ── */}
+      <div className="hidden lg:flex lg:w-[400px] xl:w-[460px] flex-col justify-between bg-slate-900 px-14 py-16 flex-shrink-0">
+        <div className="flex items-center gap-3">
+          <CrossLogo size={20} color="#fff" />
+          <span className="font-mono text-[10px] tracking-[0.22em] uppercase text-white">MediConnect</span>
         </div>
 
-        {/* PANEL DERECHO */}
-        <div className="w-full lg:w-1/2 flex flex-col h-screen overflow-y-auto bg-white dark:bg-[#001F23]">
+        <div>
+          <p className="font-mono text-[10px] tracking-[0.22em] uppercase text-slate-500 mb-5">
+            Nuevo Paciente
+          </p>
+          <h1 className="text-[36px] font-semibold tracking-[-0.025em] text-white leading-[1.1] mb-5">
+            Crea tu cuenta de paciente.
+          </h1>
+          <p className="text-[14px] text-slate-400 leading-relaxed max-w-xs">
+            Tus datos se manejan de forma segura conforme a la ley de protección de datos personales.
+          </p>
+        </div>
 
-          <header className="w-full bg-white dark:bg-[#001F23] border-b border-gray-100 dark:border-gray-800 px-6 lg:px-12 py-4 flex items-center justify-between sticky top-0 z-30">
-            <div className="flex items-center gap-4">
-              <span className="hidden md:block text-sm text-slate-500 dark:text-slate-400">
-                ¿Ya tienes cuenta?
-              </span>
-              <button
-                onClick={() => navigate("/login")}
-                className="px-5 py-2 text-sm font-semibold rounded-lg border border-[#006B76] text-white bg-[#006B76] hover:bg-white hover:text-[#006B76] transition-colors"
-              >
-                Inicia sesión
-              </button>
+        <div className="flex flex-col gap-3">
+          <div className="flex items-center gap-2 text-slate-500">
+            <span className="material-symbols-outlined text-[15px]">verified_user</span>
+            <span className="font-mono text-[11px] tracking-wide">Datos Protegidos</span>
+          </div>
+          <div className="flex items-center gap-2 text-slate-500">
+            <span className="material-symbols-outlined text-[15px]">lock</span>
+            <span className="font-mono text-[11px] tracking-wide">Acceso Encriptado</span>
+          </div>
+        </div>
+      </div>
+
+      {/* ── PANEL DERECHO ── */}
+      <div className="flex-1 bg-[#F1F5F9] flex items-start justify-center px-6 py-12 overflow-y-auto relative">
+
+        <button
+          type="button"
+          onClick={() => navigate("/login")}
+          className="absolute top-6 right-6 lg:top-8 lg:right-8 font-mono text-[10px] tracking-[0.18em] uppercase text-slate-400 hover:text-slate-900 transition-colors"
+        >
+          ← Iniciar sesión
+        </button>
+
+        <div className="bg-white w-full max-w-[480px] px-10 py-12 my-4">
+
+          {/* Eyebrow + Título */}
+          <div className="mb-10">
+            <p className={labelCls}>Registro · Paciente</p>
+            <h2 className="text-[30px] font-semibold tracking-[-0.025em] text-slate-900 leading-[1.1]">
+              Crear cuenta
+            </h2>
+          </div>
+
+          <form onSubmit={handleRegister} className="space-y-7">
+
+            {/* NOMBRE COMPLETO */}
+            <div>
+              <label className={labelCls}>Nombre Completo</label>
+              <input
+                type="text" name="nombre_completo" value={formData.nombre_completo}
+                onChange={handleChange} placeholder="Ej. Juan Pérez" required
+                className={inputCls(!!fieldErrors.nombre_completo)}
+              />
+              <FErr name="nombre_completo" />
             </div>
-          </header>
 
-          <main className="flex-1 flex items-center justify-center px-8 sm:px-16 lg:px-24 py-12">
-            <div className="w-full max-w-lg">
-
-              <div className="mb-10 text-center">
-                <h2 className="text-3xl font-extrabold text-slate-900 dark:text-white mb-3">
-                  Crea tu Cuenta de Paciente
-                </h2>
-                <p className="text-slate-500 dark:text-slate-400 max-w-md mx-auto">
-                  Tus datos se manejan de forma segura conforme a la ley de protección de datos personales.
-                </p>
+            {/* TELÉFONO + EMAIL (2 col) */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-7">
+              <div>
+                <label className={labelCls}>Teléfono</label>
+                <input
+                  type="tel" name="telefono" value={formData.telefono}
+                  onChange={handleChange} placeholder="7777-7777" maxLength={9} required
+                  className={inputCls(!!fieldErrors.telefono)}
+                />
+                <FErr name="telefono" />
               </div>
 
-              <form onSubmit={handleRegister} className="space-y-6">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-
-                  {/* NOMBRE COMPLETO */}
-                  <div className="col-span-full">
-                    <label className="block text-sm font-semibold text-slate-700 dark:text-slate-200 mb-2">Nombre Completo</label>
-                    <div className="relative">
-                      <span className="absolute inset-y-0 left-0 pl-3 flex items-center text-slate-400 pointer-events-none">
-                        <span className="material-symbols-outlined text-xl">person</span>
-                      </span>
-                      <input type="text" name="nombre_completo" value={formData.nombre_completo} onChange={handleChange}
-                        placeholder="Ej. Juan Pérez" required
-                        className={`w-full pl-10 pr-4 py-3 bg-slate-50 dark:bg-slate-800 border rounded-lg focus:ring-2 focus:ring-[#006B76]/20 focus:border-[#006B76] outline-none transition-all text-slate-900 dark:text-white ${fieldErrors.nombre_completo ? "border-red-400" : "border-slate-200 dark:border-slate-700"}`}
-                      />
-                    </div>
-                    <FErr name="nombre_completo" />
-                  </div>
-
-                  {/* TELÉFONO */}
-                  <div className="md:col-span-1">
-                    <label className="block text-sm font-semibold text-slate-700 dark:text-slate-200 mb-2">Teléfono</label>
-                    <div className="relative">
-                      <span className="absolute inset-y-0 left-0 pl-3 flex items-center text-slate-400 pointer-events-none">
-                        <span className="material-symbols-outlined text-xl">call</span>
-                      </span>
-                      <input type="tel" name="telefono" value={formData.telefono} onChange={handleChange}
-                        placeholder="7777-7777" maxLength={9} required
-                        className={`w-full pl-10 pr-4 py-3 bg-slate-50 dark:bg-slate-800 border rounded-lg focus:ring-2 focus:ring-[#006B76]/20 focus:border-[#006B76] outline-none transition-all text-slate-900 dark:text-white ${fieldErrors.telefono ? "border-red-400" : "border-slate-200 dark:border-slate-700"}`}
-                      />
-                    </div>
-                    <FErr name="telefono" />
-                  </div>
-
-                  {/* EMAIL */}
-                  <div className="md:col-span-1">
-                    <label className="block text-sm font-semibold text-slate-700 dark:text-slate-200 mb-2">Correo electrónico</label>
-                    <div className="relative">
-                      <span className="absolute inset-y-0 left-0 pl-3 flex items-center text-slate-400 pointer-events-none">
-                        <span className="material-symbols-outlined text-xl">mail</span>
-                      </span>
-                      <input type="email" name="email" value={formData.email} onChange={handleChange}
-                        placeholder="correo@ejemplo.com" required
-                        className={`w-full pl-10 pr-4 py-3 bg-slate-50 dark:bg-slate-800 border rounded-lg focus:ring-2 focus:ring-[#006B76]/20 focus:border-[#006B76] outline-none transition-all text-slate-900 dark:text-white ${fieldErrors.email ? "border-red-400" : "border-slate-200 dark:border-slate-700"}`}
-                      />
-                    </div>
-                    <FErr name="email" />
-                  </div>
-
-                  {/* FECHA NACIMIENTO */}
-                  <div className="col-span-full">
-                    <label className="block text-sm font-semibold text-slate-700 dark:text-slate-200 mb-2">Fecha de Nacimiento</label>
-                    <div className="relative">
-                      <span className="absolute inset-y-0 left-0 pl-3 flex items-center text-slate-400 pointer-events-none">
-                        <span className="material-symbols-outlined text-xl">calendar_today</span>
-                      </span>
-                      <input type="date" name="fecha_nacimiento" value={formData.fecha_nacimiento} onChange={handleChange}
-                        min={minBirthDate()} max={maxBirthDate()} required
-                        className={`w-full pl-10 pr-4 py-3 bg-slate-50 dark:bg-slate-800 border rounded-lg focus:ring-2 focus:ring-[#006B76]/20 focus:border-[#006B76] outline-none transition-all text-slate-900 dark:text-white ${fieldErrors.fecha_nacimiento ? "border-red-400" : "border-slate-200 dark:border-slate-700"}`}
-                      />
-                    </div>
-                    <FErr name="fecha_nacimiento" />
-                  </div>
-
-                  {/* TIPO DE SANGRE */}
-                  <div className="col-span-full">
-                    <label className="block text-sm font-semibold text-slate-700 dark:text-slate-200 mb-2">Tipo de Sangre</label>
-                    <div className="relative">
-                      <span className="absolute inset-y-0 left-0 pl-3 flex items-center text-slate-400 pointer-events-none">
-                        <span className="material-symbols-outlined text-xl">bloodtype</span>
-                      </span>
-                      <select name="tipo_sangre" value={formData.tipo_sangre} onChange={handleChange} required
-                        className={`w-full pl-10 pr-10 py-3 bg-slate-50 dark:bg-slate-800 border rounded-lg focus:ring-2 focus:ring-[#006B76]/20 focus:border-[#006B76] outline-none transition-all text-slate-900 dark:text-white appearance-none ${fieldErrors.tipo_sangre ? "border-red-400" : "border-slate-200 dark:border-slate-700"}`}
-                      >
-                        <option value="">Selecciona tu tipo de sangre</option>
-                        <option value="A+">A Rh positivo (A+)</option>
-                        <option value="A-">A Rh negativo (A-)</option>
-                        <option value="B+">B Rh positivo (B+)</option>
-                        <option value="B-">B Rh negativo (B-)</option>
-                        <option value="AB+">AB Rh positivo (AB+)</option>
-                        <option value="AB-">AB Rh negativo (AB-)</option>
-                        <option value="O+">O Rh positivo (O+)</option>
-                        <option value="O-">O Rh negativo (O-)</option>
-                      </select>
-                      <span className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none text-slate-400">
-                        <span className="material-symbols-outlined">expand_more</span>
-                      </span>
-                    </div>
-                    <FErr name="tipo_sangre" />
-                  </div>
-
-                  {/* PASSWORD */}
-                  <div className="col-span-full">
-                    <label className="block text-sm font-semibold text-slate-700 dark:text-slate-200 mb-2">Contraseña</label>
-                    <div className="relative">
-                      <div className="absolute inset-y-0 left-0 w-12 flex items-center justify-center pointer-events-none z-10">
-                        <span className="material-symbols-outlined text-slate-400 text-xl">lock</span>
-                      </div>
-                      <input type={showPassword ? "text" : "password"} name="password" value={formData.password}
-                        onChange={handleChange} placeholder="Mínimo 8 caracteres" required
-                        className={`w-full pl-12 pr-12 py-3 bg-slate-50 dark:bg-slate-800 border rounded-lg focus:ring-2 focus:ring-[#006B76]/20 focus:border-[#006B76] outline-none transition-all text-slate-900 dark:text-white ${fieldErrors.password ? "border-red-400" : "border-slate-200 dark:border-slate-700"}`}
-                      />
-                      <button type="button" onClick={() => setShowPassword(!showPassword)}
-                        className="absolute inset-y-0 right-0 w-12 flex items-center justify-center text-slate-400 hover:text-[#006B76] cursor-pointer z-10">
-                        <span className="material-symbols-outlined text-xl select-none">
-                          {showPassword ? "visibility_off" : "visibility"}
-                        </span>
-                      </button>
-                    </div>
-                    <FErr name="password" />
-                  </div>
-                </div>
-
-                {/* FEEDBACK INLINE */}
-                {(error || success) && (
-                  <div className={`px-4 py-3 rounded-xl border text-sm font-semibold flex items-center gap-2 ${
-                    success
-                      ? "bg-emerald-50 border-emerald-200 text-emerald-700"
-                      : "bg-red-50 border-red-200 text-red-700"
-                  }`}>
-                    <span className="material-symbols-outlined" style={{ fontSize: "18px" }}>
-                      {success ? "check_circle" : "error"}
-                    </span>
-                    {success || error}
-                  </div>
-                )}
-
-                {/* BOTÓN SUBMIT */}
-                <div className="pt-2">
-                  <button
-                    type="submit"
-                    disabled={loading || !!success}
-                    className="w-full bg-[#006B76] hover:bg-[#004F5A] text-white font-bold py-4 rounded-lg shadow-lg shadow-[#006B76]/20 transition-all transform active:scale-[0.98] flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    {loading ? (
-                      "Registrando..."
-                    ) : (
-                      <>
-                        <span>Registrarse</span>
-                        <span className="material-symbols-outlined">arrow_forward</span>
-                      </>
-                    )}
-                  </button>
-                </div>
-              </form>
-
-              <div className="mt-8 pt-8 border-t border-slate-100 dark:border-slate-800 text-center">
-                <p className="text-sm text-slate-500 dark:text-slate-400">
-                  Al registrarte, aceptas nuestros Términos de Servicio y Política de Privacidad.
-                </p>
+              <div>
+                <label className={labelCls}>Correo electrónico</label>
+                <input
+                  type="email" name="email" value={formData.email}
+                  onChange={handleChange} placeholder="correo@ejemplo.com" required
+                  className={inputCls(!!fieldErrors.email)}
+                />
+                <FErr name="email" />
               </div>
             </div>
-          </main>
 
-          <footer className="py-6 text-center text-slate-400 text-xs">
-            © 2026 MediConnect. Todos los derechos reservados.
-          </footer>
+            {/* FECHA DE NACIMIENTO */}
+            <div>
+              <label className={labelCls}>Fecha de Nacimiento</label>
+              <input
+                type="date" name="fecha_nacimiento" value={formData.fecha_nacimiento}
+                onChange={handleChange} min={minBirthDate()} max={maxBirthDate()} required
+                className={inputCls(!!fieldErrors.fecha_nacimiento)}
+              />
+              <FErr name="fecha_nacimiento" />
+            </div>
+
+            {/* TIPO DE SANGRE */}
+            <div>
+              <label className={labelCls}>Tipo de Sangre</label>
+              <div className="relative">
+                <select
+                  name="tipo_sangre" value={formData.tipo_sangre}
+                  onChange={handleChange} required
+                  className={`${inputCls(!!fieldErrors.tipo_sangre)} appearance-none pr-6 cursor-pointer`}
+                >
+                  <option value="">Selecciona tu tipo de sangre</option>
+                  <option value="A+">A Rh positivo (A+)</option>
+                  <option value="A-">A Rh negativo (A-)</option>
+                  <option value="B+">B Rh positivo (B+)</option>
+                  <option value="B-">B Rh negativo (B-)</option>
+                  <option value="AB+">AB Rh positivo (AB+)</option>
+                  <option value="AB-">AB Rh negativo (AB-)</option>
+                  <option value="O+">O Rh positivo (O+)</option>
+                  <option value="O-">O Rh negativo (O-)</option>
+                </select>
+                <span className="absolute right-0 inset-y-0 flex items-end pb-2.5 pointer-events-none text-slate-400">
+                  <span className="material-symbols-outlined text-[18px]">expand_more</span>
+                </span>
+              </div>
+              <FErr name="tipo_sangre" />
+            </div>
+
+            {/* CONTRASEÑA */}
+            <div>
+              <label className={labelCls}>Contraseña</label>
+              <div className="relative">
+                <input
+                  type={showPassword ? "text" : "password"}
+                  name="password" value={formData.password}
+                  onChange={handleChange} placeholder="Mínimo 8 caracteres" required
+                  className={`${inputCls(!!fieldErrors.password)} pr-8`}
+                />
+                <button type="button" onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-0 inset-y-0 flex items-end pb-2.5 text-slate-400 hover:text-slate-900 transition-colors">
+                  <span className="material-symbols-outlined text-[18px] select-none">
+                    {showPassword ? "visibility_off" : "visibility"}
+                  </span>
+                </button>
+              </div>
+              <FErr name="password" />
+            </div>
+
+            {/* FEEDBACK */}
+            {(error || success) && (
+              <p className={`text-[12px] ${success ? "text-emerald-600" : "text-red-500"}`}>
+                {success || error}
+              </p>
+            )}
+
+            {/* SUBMIT */}
+            <button
+              type="submit"
+              disabled={loading || !!success}
+              className="w-full rounded-full bg-slate-900 hover:bg-slate-700 text-white text-[13px] font-semibold py-3 transition-colors disabled:opacity-50"
+            >
+              {loading ? "Registrando..." : "Crear cuenta"}
+            </button>
+
+            <p className="text-center text-[11px] text-slate-400 pt-2">
+              Al registrarte, aceptas nuestros Términos de Servicio y Política de Privacidad.
+            </p>
+          </form>
         </div>
       </div>
     </div>
