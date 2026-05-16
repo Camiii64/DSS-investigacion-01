@@ -91,7 +91,7 @@ function Register() {
     <div className="flex min-h-screen font-['Inter',sans-serif]">
 
       {/* ── PANEL IZQUIERDO ── */}
-      <div className="hidden lg:flex lg:w-[400px] xl:w-[460px] flex-col justify-between bg-slate-900 px-14 py-16 flex-shrink-0">
+      <div className="hidden lg:flex lg:w-1/2 flex-col justify-between bg-slate-900 px-14 py-16 flex-shrink-0">
         <div className="flex items-center gap-3">
           <CrossLogo size={20} color="#fff" />
           <span className="font-mono text-[10px] tracking-[0.22em] uppercase text-white">MediConnect</span>
@@ -122,7 +122,7 @@ function Register() {
       </div>
 
       {/* ── PANEL DERECHO ── */}
-      <div className="flex-1 bg-[#F1F5F9] flex items-start justify-center px-6 py-12 overflow-y-auto relative">
+      <div className="flex-1 lg:w-1/2 bg-[#F1F5F9] flex items-start justify-center px-6 py-12 overflow-y-auto relative">
 
         <button
           type="button"
