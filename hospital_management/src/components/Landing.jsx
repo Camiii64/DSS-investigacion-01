@@ -245,7 +245,7 @@ function Hero({ showForm }) {
                   <img
                     src={logoImg}
                     alt="MediConnect"
-                    className="w-full h-full object-contain p-8"
+                    className="w-full h-full object-contain p-2"
                   />
                 </div>
               </div>
