@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { API_URL } from "../config";
+import logoImg from "../assets/Gemini_Generated_Image_uup011uup011uup0.png";
 
 
 function Login() {
@@ -267,43 +268,35 @@ function Login() {
       <div className="flex min-h-screen w-full font-['Inter',sans-serif] bg-[#f0fafb] dark:bg-[#001F23]">
         {/* PANEL IZQUIERDO */}
         <div className="hidden lg:flex lg:w-1/2 relative overflow-hidden bg-[#006B76]">
-          <div
-            className="absolute inset-0 z-0 opacity-40 bg-center bg-no-repeat bg-cover"
-            style={{
-              backgroundImage:
-                "url('https://images.unsplash.com/photo-1519494026892-80bbd2d6fd0d?q=80&w=2053&auto=format&fit=crop')",
-            }}
-          ></div>
+          <div className="absolute inset-0 z-0 bg-gradient-to-br from-[#004F5A] to-[#008C9A]"></div>
 
-          <div className="absolute inset-0 z-10 bg-gradient-to-br from-[#006B76]/80 to-[#006B76]/40"></div>
-
-          <div className="relative z-20 flex flex-col justify-between p-16 w-full text-white h-full">
-            <div className="flex items-center gap-3">
-              <div className="bg-white/20 p-2 rounded-lg backdrop-blur-md">
-                <span className="material-symbols-outlined text-white text-3xl">
-                  local_hospital
-                </span>
+          <div className="relative z-10 flex flex-col items-center justify-center w-full h-full gap-10 p-16 text-white">
+            {/* Logo centrado */}
+            <div className="flex flex-col items-center gap-6">
+              <div className="w-52 h-52 rounded-3xl bg-white/10 backdrop-blur-sm flex items-center justify-center shadow-2xl ring-1 ring-white/20">
+                <img
+                  src={logoImg}
+                  alt="MediConnect Logo"
+                  className="w-40 h-40 object-contain drop-shadow-lg"
+                />
               </div>
-              <span className="text-2xl font-bold tracking-tight">
-                MediConnect
-              </span>
+              <span className="text-3xl font-extrabold tracking-tight">MediConnect</span>
             </div>
 
-            <div>
-              <h1 className="text-5xl font-extrabold leading-tight mb-6">
-                Sistema de Gestión Hospitalaria
-              </h1>
-              <p className="text-xl text-white/90 max-w-lg leading-relaxed">
-                Administra citas, doctores y pacientes en una plataforma segura y unificada.
+            {/* Descripción */}
+            <div className="text-center max-w-sm">
+              <p className="text-lg text-white/80 leading-relaxed">
+                Sistema de Gestión Hospitalaria — citas, doctores y pacientes en una plataforma segura y unificada.
               </p>
             </div>
 
-            <div className="flex gap-8 text-sm font-medium text-white/70">
-              <span className="flex items-center gap-2">
+            {/* Features */}
+            <div className="flex gap-6 text-sm font-medium text-white/60">
+              <span className="flex items-center gap-1.5">
                 <span className="material-symbols-outlined text-sm">verified_user</span>
                 Acceso Seguro
               </span>
-              <span className="flex items-center gap-2">
+              <span className="flex items-center gap-1.5">
                 <span className="material-symbols-outlined text-sm">lock</span>
                 Datos Encriptados
               </span>
