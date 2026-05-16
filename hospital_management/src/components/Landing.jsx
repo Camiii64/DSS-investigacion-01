@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
+import logoImg from "../assets/Gemini_Generated_Image_uup011uup011uup0.png";
 
 // ─── Atomic UI bits ─────────────────────────────────────────────────────────
 const MediCross = ({ size = 18, className = "", color = "currentColor" }) => (
@@ -240,13 +241,13 @@ function Hero({ showForm }) {
             <div className="relative">
               <div className="absolute -inset-6 bg-gradient-to-br from-slate-700 to-teal-500 rounded-[40px] opacity-90"></div>
               <div className="relative">
-                <ImagePlaceholder
-                  label="DOCTOR · RETRATO"
-                  variant="light"
-                  aspect="aspect-[4/5]"
-                  rounded="rounded-[32px]"
-                  className="bg-white"
-                />
+                <div className="aspect-[4/5] rounded-[32px] bg-white overflow-hidden flex items-center justify-center">
+                  <img
+                    src={logoImg}
+                    alt="MediConnect"
+                    className="w-full h-full object-contain p-8"
+                  />
+                </div>
               </div>
 
               <div className="absolute -right-3 lg:-right-10 bottom-10 bg-slate-900 text-white rounded-2xl shadow-[0_20px_50px_-20px_rgba(15,23,42,0.45)] p-4 w-[240px]">
