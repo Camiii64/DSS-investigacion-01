@@ -1,6 +1,5 @@
 import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
-import logoImg from "../assets/Gemini_Generated_Image_uup011uup011uup0.png";
 
 // ─── Atomic UI bits ─────────────────────────────────────────────────────────
 const MediCross = ({ size = 18, className = "", color = "currentColor" }) => (
@@ -193,80 +192,46 @@ function Hero({ showForm }) {
         className="absolute inset-0 pointer-events-none opacity-[0.035]"
         style={{ backgroundImage: "linear-gradient(#0F172A 1px, transparent 1px), linear-gradient(90deg, #0F172A 1px, transparent 1px)", backgroundSize: "48px 48px" }}
       ></div>
-      <div className="max-w-[1280px] mx-auto px-6 lg:px-10 pt-12 lg:pt-20 pb-20 relative">
-        <div className="grid lg:grid-cols-12 gap-10 items-end">
-          <div className="lg:col-span-7">
-            <div className="inline-flex items-center gap-2.5 bg-white border border-slate-200 rounded-full pl-2 pr-4 py-1.5 mb-8 shadow-sm">
-              <span className="bg-red-50 text-red-700 text-[10px] font-bold tracking-wider font-mono px-2 py-0.5 rounded-full">NUEVO</span>
-              <span className="text-[13px] text-slate-700">Citas en línea + Emergencia inmediata sin registro</span>
-            </div>
-
-            <h1 className="text-[56px] lg:text-[88px] leading-[0.95] font-bold tracking-[-0.035em] text-slate-900 text-balance">
-              Tu salud, <br className="hidden lg:block" />
-              <span className="relative inline-block">
-                conectada
-                <svg className="absolute -bottom-2 left-0 w-full" height="14" viewBox="0 0 300 14" fill="none" preserveAspectRatio="none">
-                  <path d="M2 8 C 60 2, 140 12, 298 6" stroke="#DC2626" strokeWidth="3" strokeLinecap="round" fill="none" />
-                </svg>
-              </span>
-              <span className="text-slate-400">.</span>
-            </h1>
-
-            <p className="mt-7 text-[18px] lg:text-[19px] text-slate-600 leading-relaxed max-w-[540px] text-pretty">
-              MediConnect es una plataforma para pedir, gestionar y dar seguimiento a citas médicas en minutos —
-              y atender emergencias sin necesidad de registro previo.
-            </p>
-
-            <div className="mt-9 flex flex-wrap items-center gap-3">
-              <Btn to="/register" variant="primary">Pedir una cita</Btn>
-              <Btn to="/login" variant="ghost" icon={false}>Iniciar sesión</Btn>
-              <a href="#emergencia" className="ml-1 inline-flex items-center gap-2 text-[14px] font-semibold text-slate-900 hover:text-red-600 group">
-                <span className="relative flex w-2.5 h-2.5">
-                  <span className="absolute inset-0 rounded-full bg-red-600 animate-ping opacity-60"></span>
-                  <span className="relative w-2.5 h-2.5 rounded-full bg-red-600"></span>
-                </span>
-                Emergencia inmediata
-                <ArrowUpRight size={12} className="group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-transform" />
-              </a>
-            </div>
-
-            <div className="mt-12 flex flex-wrap items-center gap-x-8 gap-y-3 text-[13px] text-slate-500">
-              <span className="flex items-center gap-2"><Check size={14} className="text-emerald-600" /> Contraseñas cifradas (bcrypt)</span>
-              <span className="flex items-center gap-2"><Check size={14} className="text-emerald-600" /> Acceso por roles</span>
-              <span className="flex items-center gap-2"><Check size={14} className="text-emerald-600" /> Desplegado en Microsoft Azure</span>
-            </div>
+      <div className="max-w-[860px] mx-auto px-6 lg:px-10 pt-12 lg:pt-20 pb-20 relative text-center">
+        <div>
+          <div className="inline-flex items-center gap-2.5 bg-white border border-slate-200 rounded-full pl-2 pr-4 py-1.5 mb-8 shadow-sm">
+            <span className="bg-red-50 text-red-700 text-[10px] font-bold tracking-wider font-mono px-2 py-0.5 rounded-full">NUEVO</span>
+            <span className="text-[13px] text-slate-700">Citas en línea + Emergencia inmediata sin registro</span>
           </div>
 
-          <div className="lg:col-span-5 relative">
-            <div className="relative">
-              <div className="absolute -inset-6 bg-gradient-to-br from-slate-700 to-teal-500 rounded-[40px] opacity-90"></div>
-              <div className="relative">
-                <div className="aspect-[4/5] rounded-[32px] bg-white overflow-hidden flex items-center justify-center">
-                  <img
-                    src={logoImg}
-                    alt="MediConnect"
-                    className="w-full h-full object-contain p-2"
-                  />
-                </div>
-              </div>
+          <h1 className="text-[56px] lg:text-[88px] leading-[0.95] font-bold tracking-[-0.035em] text-slate-900 text-balance">
+            Tu salud, <br className="hidden lg:block" />
+            <span className="relative inline-block">
+              conectada
+              <svg className="absolute -bottom-2 left-0 w-full" height="14" viewBox="0 0 300 14" fill="none" preserveAspectRatio="none">
+                <path d="M2 8 C 60 2, 140 12, 298 6" stroke="#DC2626" strokeWidth="3" strokeLinecap="round" fill="none" />
+              </svg>
+            </span>
+            <span className="text-slate-400">.</span>
+          </h1>
 
-              <div className="absolute -right-3 lg:-right-10 bottom-10 bg-slate-900 text-white rounded-2xl shadow-[0_20px_50px_-20px_rgba(15,23,42,0.45)] p-4 w-[240px]">
-                <div className="flex items-center gap-2">
-                  <span className="relative flex w-2 h-2">
-                    <span className="absolute inset-0 rounded-full bg-red-500 animate-ping opacity-70"></span>
-                    <span className="relative w-2 h-2 rounded-full bg-red-500"></span>
-                  </span>
-                  <span className="font-mono text-[10px] tracking-[0.18em] text-red-400 uppercase">Emergencia · activa</span>
-                </div>
-                <div className="mt-2 text-[13px] text-slate-300 leading-relaxed">
-                  Cuenta temporal generada y doctor <span className="text-white font-semibold">asignado</span> automáticamente.
-                </div>
-                <div className="mt-3 pt-3 border-t border-white/10 flex items-center justify-between text-[11px] font-mono">
-                  <span className="text-slate-400">ESTADO</span>
-                  <span className="text-white">ACEPTADA</span>
-                </div>
-              </div>
-            </div>
+          <p className="mt-7 text-[18px] lg:text-[19px] text-slate-600 leading-relaxed max-w-[600px] text-pretty mx-auto">
+            MediConnect es una plataforma para pedir, gestionar y dar seguimiento a citas médicas en minutos —
+            y atender emergencias sin necesidad de registro previo.
+          </p>
+
+          <div className="mt-9 flex flex-wrap items-center justify-center gap-3">
+            <Btn to="/register" variant="primary">Pedir una cita</Btn>
+            <Btn to="/login" variant="ghost" icon={false}>Iniciar sesión</Btn>
+            <a href="#emergencia" className="ml-1 inline-flex items-center gap-2 text-[14px] font-semibold text-slate-900 hover:text-red-600 group">
+              <span className="relative flex w-2.5 h-2.5">
+                <span className="absolute inset-0 rounded-full bg-red-600 animate-ping opacity-60"></span>
+                <span className="relative w-2.5 h-2.5 rounded-full bg-red-600"></span>
+              </span>
+              Emergencia inmediata
+              <ArrowUpRight size={12} className="group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-transform" />
+            </a>
+          </div>
+
+          <div className="mt-12 flex flex-wrap items-center justify-center gap-x-8 gap-y-3 text-[13px] text-slate-500">
+            <span className="flex items-center gap-2"><Check size={14} className="text-emerald-600" /> Contraseñas cifradas (bcrypt)</span>
+            <span className="flex items-center gap-2"><Check size={14} className="text-emerald-600" /> Acceso por roles</span>
+            <span className="flex items-center gap-2"><Check size={14} className="text-emerald-600" /> Desplegado en Microsoft Azure</span>
           </div>
         </div>
 
