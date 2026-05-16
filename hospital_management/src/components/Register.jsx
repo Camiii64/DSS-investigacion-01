@@ -122,7 +122,7 @@ function Register() {
       </div>
 
       {/* ── PANEL DERECHO ── */}
-      <div className="flex-1 lg:w-1/2 bg-[#F1F5F9] flex items-start justify-center px-6 py-12 overflow-y-auto relative">
+      <div className="flex-1 lg:w-1/2 bg-[#F1F5F9] flex items-center justify-center px-6 py-12 overflow-y-auto relative">
 
         <button
           type="button"
@@ -132,7 +132,7 @@ function Register() {
           ← Iniciar sesión
         </button>
 
-        <div className="bg-white w-full max-w-[480px] px-10 py-12 my-4">
+        <div className="bg-white w-full max-w-[480px] px-10 py-12">
 
           {/* Eyebrow + Título */}
           <div className="mb-10">

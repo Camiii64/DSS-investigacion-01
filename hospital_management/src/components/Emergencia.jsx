@@ -332,76 +332,58 @@ export default function Emergencia() {
       <div className="flex min-h-screen w-full font-['Inter',sans-serif]">
 
         {/* ── PANEL IZQUIERDO ─────────────────────────────────────────── */}
-        <div
-          className="hidden lg:flex lg:w-1/2 relative overflow-hidden"
-          style={{ background: "linear-gradient(145deg,#004F5A 0%,#006B76 40%,#7f1d1d 100%)" }}
-        >
-          <div
-            className="absolute inset-0 z-0 opacity-20 bg-center bg-no-repeat bg-cover"
-            style={{ backgroundImage: "url('https://images.unsplash.com/photo-1516574187841-cb9cc2ca948b?q=80&w=2070&auto=format&fit=crop')" }}
-          />
-          <div
-            className="absolute inset-0 z-10"
-            style={{ background: "linear-gradient(to bottom right,rgba(0,79,90,.85) 0%,rgba(127,29,29,.6) 100%)" }}
-          />
-          <div className="absolute top-[-80px] right-[-80px] w-80 h-80 rounded-full z-10" style={{ background: "rgba(239,68,68,.15)" }} />
-          <div className="absolute bottom-[-60px] left-[-60px] w-64 h-64 rounded-full z-10" style={{ background: "rgba(0,107,118,.25)" }} />
+        <div className="hidden lg:flex lg:w-1/2 flex-col justify-between bg-slate-900 px-14 py-16 flex-shrink-0">
+          <div className="flex items-center gap-3">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+              <rect x="9" y="0" width="6" height="24" rx="1.5" fill="white" />
+              <rect x="0" y="9" width="24" height="6" rx="1.5" fill="white" />
+            </svg>
+            <span className="font-mono text-[10px] tracking-[0.22em] uppercase text-white">MediConnect</span>
+          </div>
 
-          <div className="relative z-20 flex flex-col justify-between p-16 w-full text-white h-full">
-            <div className="flex items-center gap-3">
-              <div className="bg-white/15 p-2 rounded-xl backdrop-blur-md border border-white/20">
-                <span className="material-symbols-outlined text-white text-3xl">local_hospital</span>
-              </div>
-              <span className="text-2xl font-bold tracking-tight">MediConnect</span>
+          <div>
+            <div className="inline-flex items-center gap-2 bg-red-600 px-3 py-1.5 rounded-full mb-6">
+              <span className="w-1.5 h-1.5 rounded-full bg-red-200 animate-pulse inline-block" />
+              <span className="font-mono text-[10px] tracking-[0.22em] uppercase text-red-100">Línea de Emergencia</span>
             </div>
-
-            <div>
-              <div className="inline-flex items-center gap-2 bg-red-600/90 backdrop-blur-sm px-4 py-2 rounded-full mb-6 border border-red-400/40">
-                <span className="material-symbols-outlined text-white text-base animate-pulse">emergency</span>
-                <span className="text-xs font-extrabold uppercase tracking-widest text-red-100">Línea de Emergencia</span>
-              </div>
-              <h1 className="text-5xl font-extrabold leading-tight mb-5">
-                Atención<br />
-                <span style={{ color: "#fca5a5" }}>Inmediata</span>
-              </h1>
-              <p className="text-lg text-white/80 max-w-sm leading-relaxed">
-                No necesitas cuenta. Llena el formulario o solicita una ambulancia directamente.
-              </p>
-              <div className="mt-10 space-y-4">
-                {[
-                  { icon: "edit_note",        label: "Completa los datos mínimos" },
-                  { icon: "person_add",        label: "Se asigna un doctor disponible" },
-                  { icon: "local_shipping",    label: "Solicita ambulancia con tu ubicación exacta" },
-                  { icon: "medical_services",  label: "Atención inmediata garantizada" },
-                ].map((step, i) => (
-                  <div key={i} className="flex items-center gap-4">
-                    <div
-                      className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0"
-                      style={{ background: i === 2 ? "rgba(239,68,68,.4)" : "rgba(255,255,255,.12)" }}
-                    >
-                      <span className="material-symbols-outlined text-white text-base">{step.icon}</span>
-                    </div>
-                    <span className="text-sm font-semibold text-white/85">{step.label}</span>
-                  </div>
-                ))}
-              </div>
+            <p className="font-mono text-[10px] tracking-[0.22em] uppercase text-slate-500 mb-5">
+              Sin cuenta requerida
+            </p>
+            <h1 className="text-[36px] font-semibold tracking-[-0.025em] text-white leading-[1.1] mb-5">
+              Atención inmediata garantizada.
+            </h1>
+            <p className="text-[14px] text-slate-400 leading-relaxed max-w-xs mb-10">
+              No necesitas cuenta. Llena el formulario o solicita una ambulancia con tu ubicación exacta.
+            </p>
+            <div className="space-y-4">
+              {[
+                { label: "Completa los datos mínimos" },
+                { label: "Se asigna un doctor disponible" },
+                { label: "Solicita ambulancia con GPS" },
+                { label: "Atención inmediata" },
+              ].map((step, i) => (
+                <div key={i} className="flex items-center gap-3">
+                  <div className={`w-2 h-2 rounded-full shrink-0 ${i === 0 || i === 1 ? "bg-white" : "bg-slate-600"}`} />
+                  <span className="text-[13px] text-slate-400">{step.label}</span>
+                </div>
+              ))}
             </div>
+          </div>
 
-            <div className="flex gap-8 text-sm font-medium text-white/60">
-              <span className="flex items-center gap-2">
-                <span className="material-symbols-outlined text-sm">verified_user</span>
-                Sin cuenta requerida
-              </span>
-              <span className="flex items-center gap-2">
-                <span className="material-symbols-outlined text-sm">bolt</span>
-                Asignación instantánea
-              </span>
+          <div className="flex flex-col gap-3">
+            <div className="flex items-center gap-2 text-slate-500">
+              <span className="material-symbols-outlined text-[15px]">verified_user</span>
+              <span className="font-mono text-[11px] tracking-wide">Sin cuenta requerida</span>
+            </div>
+            <div className="flex items-center gap-2 text-slate-500">
+              <span className="material-symbols-outlined text-[15px]">bolt</span>
+              <span className="font-mono text-[11px] tracking-wide">Asignación instantánea</span>
             </div>
           </div>
         </div>
 
         {/* ── PANEL DERECHO ───────────────────────────────────────────── */}
-        <div className="flex flex-col w-full lg:w-1/2 bg-white px-8 sm:px-14 lg:px-12 py-12 relative overflow-y-auto">
+        <div className="flex flex-col w-full lg:w-1/2 bg-[#F1F5F9] px-8 sm:px-14 lg:px-12 py-12 relative overflow-y-auto">
 
           {/* Mobile header */}
           <div className="lg:hidden flex items-center gap-3 mb-8">
@@ -417,10 +399,9 @@ export default function Emergencia() {
           {/* Botón volver */}
           <button
             onClick={() => navigate("/login")}
-            className="absolute top-6 right-6 flex items-center gap-1.5 text-slate-400 hover:text-[#006B76] text-sm font-semibold transition-colors"
+            className="absolute top-6 right-6 font-mono text-[10px] tracking-[0.18em] uppercase text-slate-400 hover:text-slate-900 transition-colors"
           >
-            <span className="material-symbols-outlined text-base">arrow_back</span>
-            Volver al login
+            ← Volver al login
           </button>
 
           <div className="max-w-md w-full mx-auto">
@@ -432,7 +413,7 @@ export default function Emergencia() {
               <div className="fade-slide">
                 <div className="text-center mb-8">
                   <div className="relative inline-flex mb-5">
-                    <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-[#006B76] to-[#004F5A] flex items-center justify-center shadow-lg shadow-[#84D4D9]">
+                    <div className="w-20 h-20 rounded-2xl bg-slate-900 flex items-center justify-center">
                       <span className="material-symbols-outlined text-white text-4xl" style={{ fontVariationSettings: "'FILL' 1" }}>check_circle</span>
                     </div>
                     <div className="absolute -top-1 -right-1 w-6 h-6 rounded-full bg-red-500 flex items-center justify-center border-2 border-white">
@@ -444,24 +425,24 @@ export default function Emergencia() {
                 </div>
 
                 {/* Info doctor */}
-                <div className="bg-gradient-to-br from-[#E0F5F7] to-[#f0fafb] border border-[#B2E5E8] rounded-2xl p-5 mb-5">
-                  <p className="text-[10px] font-extrabold text-[#006B76] uppercase tracking-widest mb-3">Detalles de la asignación</p>
+                <div className="bg-slate-50 border border-slate-200 rounded-2xl p-5 mb-5">
+                  <p className="font-mono text-[10px] tracking-[0.22em] uppercase text-slate-400 mb-3">Detalles de la asignación</p>
                   <div className="space-y-3">
-                    <div className="flex items-center gap-3 bg-white rounded-xl px-4 py-3 border border-[#B2E5E8]/60">
-                      <div className="w-9 h-9 rounded-xl bg-[#006B76] flex items-center justify-center shrink-0">
+                    <div className="flex items-center gap-3 bg-white rounded-xl px-4 py-3 border border-slate-200">
+                      <div className="w-9 h-9 rounded-xl bg-slate-900 flex items-center justify-center shrink-0">
                         <span className="material-symbols-outlined text-white text-base">stethoscope</span>
                       </div>
                       <div>
-                        <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">Doctor Asignado</p>
+                        <p className="font-mono text-[10px] tracking-[0.18em] uppercase text-slate-400">Doctor Asignado</p>
                         <p className="text-sm font-extrabold text-slate-800">{result.doctorNombre}</p>
                       </div>
                     </div>
-                    <div className="flex items-center gap-3 bg-white rounded-xl px-4 py-3 border border-[#B2E5E8]/60">
+                    <div className="flex items-center gap-3 bg-white rounded-xl px-4 py-3 border border-slate-200">
                       <div className="w-9 h-9 rounded-xl bg-red-500 flex items-center justify-center shrink-0">
                         <span className="material-symbols-outlined text-white text-base">schedule</span>
                       </div>
                       <div>
-                        <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">Hora de Registro</p>
+                        <p className="font-mono text-[10px] tracking-[0.18em] uppercase text-slate-400">Hora de Registro</p>
                         <p className="text-sm font-extrabold text-slate-800">
                           {new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
                         </p>
@@ -507,7 +488,7 @@ export default function Emergencia() {
                       if (result.codigoEmergencia) localStorage.setItem("codigoEmergencia", result.codigoEmergencia);
                       navigate("/paciente");
                     }}
-                    className="w-full bg-[#006B76] hover:bg-[#004F5A] text-white py-3.5 rounded-xl font-bold text-sm flex items-center justify-center gap-2 transition-colors shadow-md shadow-[#84D4D9]/40"
+                    className="w-full bg-slate-900 hover:bg-slate-700 text-white py-3.5 rounded-full font-bold text-sm flex items-center justify-center gap-2 transition-colors"
                   >
                     <span className="material-symbols-outlined text-base">login</span>
                     Entrar a mi perfil
@@ -589,16 +570,16 @@ export default function Emergencia() {
                     />
                   </div>
 
-                  <div className="bg-[#E0F5F7]/60 border border-[#B2E5E8] rounded-xl p-4">
-                    <label className="text-xs font-bold text-[#006B76] uppercase tracking-widest block mb-1.5">
+                  <div className="bg-slate-50 border border-slate-200 rounded-xl p-4">
+                    <label className="text-xs font-bold text-slate-500 uppercase tracking-widest block mb-1.5">
                       ¿Ya tienes cuenta?{" "}
                       <span className="text-slate-400 normal-case font-medium">— Ingresa tu correo (opcional)</span>
                     </label>
                     <div className="relative">
-                      <span className="material-symbols-outlined absolute left-3.5 top-1/2 -translate-y-1/2 text-[#006B76]/60 text-[18px]">email</span>
+                      <span className="material-symbols-outlined absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 text-[18px]">email</span>
                       <input
                         type="email"
-                        className="w-full border border-[#B2E5E8] bg-white rounded-xl py-3 pl-10 pr-4 focus:border-[#006B76] focus:ring-2 focus:ring-[#006B76]/20 transition-all text-sm outline-none font-medium placeholder:text-slate-400"
+                        className="w-full border border-slate-200 bg-white rounded-xl py-3 pl-10 pr-4 focus:border-slate-400 focus:ring-2 focus:ring-slate-100 transition-all text-sm outline-none font-medium placeholder:text-slate-400"
                         placeholder="tucorreo@ejemplo.com"
                         value={form.email}
                         onChange={e => setForm(f => ({ ...f, email: e.target.value }))}
