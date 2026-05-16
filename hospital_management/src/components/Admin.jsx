@@ -8,6 +8,13 @@ import {
   validatePassword, validateNombre, maxBirthDate, minBirthDate,
 } from "../utils/validations";
 
+const Cross = () => (
+  <svg width={14} height={14} viewBox="0 0 24 24" aria-hidden="true">
+    <rect x="9.5" y="3" width="5" height="18" rx="1.2" fill="currentColor" />
+    <rect x="3" y="9.5" width="18" height="5" rx="1.2" fill="currentColor" />
+  </svg>
+);
+
 export default function Admin() {
     const navigate = useNavigate();
     const [activeTab, setActiveTab] = useState("dashboard");
@@ -251,12 +258,12 @@ export default function Admin() {
     };
 
     const navItems = [
-        { id: "dashboard", label: "Dashboard", icon: "dashboard" },
-        { id: "pacientes", label: "Pacientes", icon: "group" },
-        { id: "doctores", label: "Doctores", icon: "person_pin_circle" },
-        { id: "citas", label: "Citas", icon: "calendar_month" },
-        { id: "crear", label: "Crear Usuario", icon: "person_add" },
-        { id: "emergencia", label: "Emergencia", icon: "emergency", red: true },
+        { id: "dashboard", label: "Dashboard" },
+        { id: "pacientes", label: "Pacientes" },
+        { id: "doctores", label: "Doctores" },
+        { id: "citas", label: "Citas", badge: stats.pendientes > 0 ? stats.pendientes : null },
+        { id: "crear", label: "Crear Usuario" },
+        { id: "emergencia", label: "Emergencia", red: true },
     ];
 
     const getStatusStyle = (estado) => {
@@ -274,9 +281,9 @@ export default function Admin() {
         const proximasCitas = citas.filter(c => c.estado === "PENDIENTE" || c.estado === "ACEPTADA");
         return (
             <>
-                <div className="mb-8">
-                    <h2 className="text-2xl font-bold text-slate-900 tracking-tight">Dashboard</h2>
-                    <p className="text-slate-500 text-sm mt-1 font-medium">Resumen general del sistema hospitalario</p>
+                <div className="anim-rise d-0 mb-10">
+                    <p className="font-mono text-[10px] tracking-[0.22em] uppercase text-slate-400 mb-1.5">Sistema</p>
+                    <h1 className="text-[40px] font-semibold tracking-[-0.025em] text-slate-900 leading-none">Dashboard</h1>
                 </div>
 
                 {/* Stats Cards */}
@@ -294,8 +301,8 @@ export default function Admin() {
                                 </div>
                                 <span className="material-symbols-outlined text-slate-300 text-sm group-hover:text-slate-400 transition-colors">trending_up</span>
                             </div>
-                            <p className="text-3xl font-extrabold text-slate-900 tracking-tight">{stat.value}</p>
-                            <p className="text-xs font-medium text-slate-500 mt-1 uppercase tracking-wider">{stat.label}</p>
+                            <p className="text-[36px] font-semibold tracking-[-0.025em] text-slate-900 leading-none">{stat.value}</p>
+                            <p className="font-mono text-[10px] tracking-[0.18em] text-slate-400 mt-2 uppercase">{stat.label}</p>
                         </div>
                     ))}
                 </div>
@@ -382,10 +389,10 @@ export default function Admin() {
         const tempCount = pacientes.filter(p => p.email?.includes("@mediconnect.tmp")).length;
         return (
             <>
-                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-8">
-                    <div>
-                        <h2 className="text-2xl font-bold text-slate-900 tracking-tight">Pacientes</h2>
-                        <p className="text-slate-500 text-sm mt-1">Gestiona los registros de pacientes del hospital</p>
+                <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4 mb-10">
+                    <div className="anim-rise d-0">
+                        <p className="font-mono text-[10px] tracking-[0.22em] uppercase text-slate-400 mb-1.5">Registro</p>
+                        <h1 className="text-[40px] font-semibold tracking-[-0.025em] text-slate-900 leading-none">Pacientes</h1>
                     </div>
                     <div className="flex items-center gap-3">
                         {tempCount > 0 && (
@@ -412,21 +419,21 @@ export default function Admin() {
 
                 {/* Stats Summary */}
                 <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-                    <div className="bg-white rounded-2xl p-5 border border-slate-200/80 shadow-sm">
-                        <p className="text-xs font-medium text-slate-500 uppercase tracking-wider">Total Pacientes</p>
-                        <p className="text-2xl font-extrabold text-slate-900 mt-1">{stats.pacientes}</p>
+                    <div className="bg-white rounded-2xl p-5 border border-slate-100">
+                        <p className="font-mono text-[10px] tracking-[0.18em] text-slate-400 uppercase mb-2">Total</p>
+                        <p className="text-[32px] font-semibold tracking-[-0.025em] text-slate-900 leading-none">{stats.pacientes}</p>
                     </div>
-                    <div className="bg-white rounded-2xl p-5 border border-slate-200/80 shadow-sm">
-                        <p className="text-xs font-medium text-slate-500 uppercase tracking-wider">Registrados</p>
-                        <p className="text-2xl font-extrabold text-[#006B76] mt-1">{pacientes.filter(p => !p.email?.includes("@mediconnect.tmp")).length}</p>
+                    <div className="bg-white rounded-2xl p-5 border border-slate-100">
+                        <p className="font-mono text-[10px] tracking-[0.18em] text-slate-400 uppercase mb-2">Registrados</p>
+                        <p className="text-[32px] font-semibold tracking-[-0.025em] text-slate-900 leading-none">{pacientes.filter(p => !p.email?.includes("@mediconnect.tmp")).length}</p>
                     </div>
-                    <div className="bg-white rounded-2xl p-5 border border-slate-200/80 shadow-sm">
-                        <p className="text-xs font-medium text-slate-500 uppercase tracking-wider">Con Citas Pendientes</p>
-                        <p className="text-2xl font-extrabold text-amber-600 mt-1">{stats.pendientes}</p>
+                    <div className="bg-white rounded-2xl p-5 border border-slate-100">
+                        <p className="font-mono text-[10px] tracking-[0.18em] text-slate-400 uppercase mb-2">Pendientes</p>
+                        <p className="text-[32px] font-semibold tracking-[-0.025em] text-slate-900 leading-none">{stats.pendientes}</p>
                     </div>
-                    <div className={`rounded-2xl p-5 border shadow-sm ${tempCount > 0 ? "bg-red-50 border-red-200" : "bg-white border-slate-200/80"}`}>
-                        <p className="text-xs font-medium text-slate-500 uppercase tracking-wider">Temporales</p>
-                        <p className={`text-2xl font-extrabold mt-1 ${tempCount > 0 ? "text-red-600" : "text-slate-300"}`}>{tempCount}</p>
+                    <div className={`rounded-2xl p-5 border ${tempCount > 0 ? "bg-red-50 border-red-100" : "bg-white border-slate-100"}`}>
+                        <p className="font-mono text-[10px] tracking-[0.18em] text-slate-400 uppercase mb-2">Temporales</p>
+                        <p className={`text-[32px] font-semibold tracking-[-0.025em] leading-none ${tempCount > 0 ? "text-red-600" : "text-slate-300"}`}>{tempCount}</p>
                     </div>
                 </div>
 
@@ -496,10 +503,10 @@ export default function Admin() {
         );
         return (
             <>
-                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-8">
-                    <div>
-                        <h2 className="text-2xl font-bold text-slate-900 tracking-tight">Directorio de Doctores</h2>
-                        <p className="text-slate-500 text-sm mt-1">Gestiona el personal médico y su disponibilidad</p>
+                <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4 mb-10">
+                    <div className="anim-rise d-0">
+                        <p className="font-mono text-[10px] tracking-[0.22em] uppercase text-slate-400 mb-1.5">Personal</p>
+                        <h1 className="text-[40px] font-semibold tracking-[-0.025em] text-slate-900 leading-none">Doctores</h1>
                     </div>
                     <div className="relative">
                         <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-lg">search</span>
@@ -627,10 +634,10 @@ export default function Admin() {
         );
         return (
             <>
-                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-8">
-                    <div>
-                        <h2 className="text-2xl font-bold text-slate-900 tracking-tight">Gestión de Citas</h2>
-                        <p className="text-slate-500 text-sm mt-1">Administra todas las citas del hospital</p>
+                <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4 mb-10">
+                    <div className="anim-rise d-0">
+                        <p className="font-mono text-[10px] tracking-[0.22em] uppercase text-slate-400 mb-1.5">Agenda</p>
+                        <h1 className="text-[40px] font-semibold tracking-[-0.025em] text-slate-900 leading-none">Citas</h1>
                     </div>
                     <div className="flex items-center gap-3">
                         <div className="relative">
@@ -745,9 +752,9 @@ export default function Admin() {
       : null;
     return (
         <>
-            <div className="mb-8">
-                <h2 className="text-2xl font-bold text-slate-900 tracking-tight">Crear Usuario</h2>
-                <p className="text-slate-500 text-sm mt-1">Registra un nuevo paciente, doctor o administrador directamente desde el panel.</p>
+            <div className="anim-rise d-0 mb-10">
+                <p className="font-mono text-[10px] tracking-[0.22em] uppercase text-slate-400 mb-1.5">Admin</p>
+                <h1 className="text-[40px] font-semibold tracking-[-0.025em] text-slate-900 leading-none">Crear Usuario</h1>
             </div>
 
             {/* Success Card */}
@@ -963,15 +970,14 @@ export default function Admin() {
                     </div>
                 )}
 
-                {/* Header banner */}
-                <div className="mb-8 p-6 rounded-2xl bg-gradient-to-r from-red-600 to-red-500 text-white flex items-center gap-4">
-                    <div className="w-14 h-14 rounded-xl bg-white/20 flex items-center justify-center flex-shrink-0">
-                        <span className="material-symbols-outlined text-3xl animate-pulse">emergency</span>
+                {/* Header */}
+                <div className="anim-rise d-0 mb-8">
+                    <div className="flex items-center gap-3 mb-1.5">
+                        <span className="w-2 h-2 rounded-full bg-red-600 animate-pulse" />
+                        <p className="font-mono text-[10px] tracking-[0.22em] uppercase text-red-600">Urgente</p>
                     </div>
-                    <div>
-                        <h2 className="text-2xl font-extrabold tracking-tight">Registro de Emergencia</h2>
-                        <p className="text-red-100 text-sm mt-0.5">Registra al paciente en segundos. El sistema asigna un doctor y genera credenciales automáticamente.</p>
-                    </div>
+                    <h1 className="text-[40px] font-semibold tracking-[-0.025em] text-slate-900 leading-none mb-3">Emergencia</h1>
+                    <p className="text-[14px] text-slate-400">Registra al paciente en segundos. El sistema asigna un doctor y genera credenciales automáticamente.</p>
                 </div>
 
                 <div className="grid grid-cols-1 lg:grid-cols-5 gap-8">
@@ -1102,7 +1108,7 @@ export default function Admin() {
     };
 
     return (
-        <div className="bg-[#f0fafb] text-slate-900 min-h-screen flex font-['Inter',sans-serif]">
+        <div className="bg-[#F1F5F9] text-slate-900 min-h-screen flex font-sans">
             <LoadingOverlay visible={loadingAction} />
             <ConfirmModal
                 visible={!!confirm}
@@ -1138,23 +1144,21 @@ export default function Admin() {
             )}
 
             {/* Sidebar */}
-            <aside className={`w-[280px] bg-white border-r border-slate-200/60 flex flex-col fixed h-full z-30 transition-transform duration-300 lg:translate-x-0 ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full shadow-none'} lg:shadow-sm`}>
+            <aside className={`w-[220px] shrink-0 bg-white border-r border-slate-100 flex flex-col fixed h-screen z-50 transition-transform duration-300 lg:translate-x-0 ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'}`}>
                 {/* Logo */}
-                <div className="p-7 pb-4">
-                    <div className="flex items-center gap-3.5">
-                        <div className="bg-gradient-to-br from-[#006B76] to-[#004F5A] rounded-xl p-2.5 text-white shadow-lg shadow-[#B2E5E8] ring-4 ring-[#E0F5F7]/50">
-                            <span className="material-symbols-outlined text-2xl">local_hospital</span>
+                <div className="px-6 pt-7 pb-6">
+                    <div className="flex items-center gap-2.5">
+                        <div className="w-7 h-7 rounded-md bg-red-600 text-white flex items-center justify-center shrink-0">
+                            <Cross />
                         </div>
-                        <div>
-                            <h1 className="text-lg font-black text-slate-900 tracking-tight leading-none">MediConnect</h1>
-                            <p className="text-[10px] text-slate-400 font-bold mt-1 uppercase tracking-wider">Health System</p>
-                        </div>
+                        <span className="text-[15px] font-semibold tracking-tight text-slate-900">
+                            Medi<span className="text-red-600">Connect</span>
+                        </span>
                     </div>
                 </div>
 
                 {/* Navigation */}
-                <nav className="flex-1 px-4 space-y-1.5 mt-6">
-                    <p className="px-4 text-[11px] font-bold text-slate-400 uppercase tracking-[0.15em] mb-4 opacity-70">Menú Principal</p>
+                <nav className="flex-1 px-3 space-y-0.5">
                     {navItems.map((item) => (
                         <button
                             key={item.id}
@@ -1165,63 +1169,76 @@ export default function Admin() {
                                 setIsSidebarOpen(false);
                                 if (item.id === "emergencia") fetchEmergencias();
                             }}
-                            className={`w-full flex items-center gap-3.5 px-4 py-3 rounded-2xl text-sm font-semibold transition-all duration-300 ${
+                            className={`w-full flex items-center justify-between px-3 py-2 rounded-lg text-[13.5px] transition-colors text-left ${
                                 activeTab === item.id
-                                    ? item.red ? "bg-red-600 text-white shadow-lg shadow-red-200" : "bg-[#006B76] text-white shadow-lg shadow-[#84D4D9]"
-                                    : item.red ? "text-red-600 hover:bg-red-50" : "text-slate-500 hover:bg-slate-50 hover:text-[#006B76]"
+                                    ? "bg-slate-50 text-slate-900 font-medium"
+                                    : item.red ? "text-red-500 hover:text-red-700" : "text-slate-500 hover:text-slate-900"
                             }`}
                         >
-                            <span className="material-symbols-outlined text-[22px]">{item.icon}</span>
-                            <span className="tracking-tight">{item.label}</span>
-                            {item.id === "citas" && stats.pendientes > 0 && (
-                                <span className={`ml-auto text-[10px] font-bold px-2 py-0.5 rounded-full ${activeTab === item.id ? "bg-white/20 text-white" : "bg-orange-100 text-orange-600"}`}>
-                                    {stats.pendientes}
+                            <span>{item.label}</span>
+                            {item.badge ? (
+                                <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-slate-100 text-slate-500">
+                                    {item.badge}
                                 </span>
-                            )}
+                            ) : null}
                         </button>
                     ))}
                 </nav>
 
-                {/* Admin Profile */}
-                <div className="p-5 border-t border-slate-100 m-4 mt-0 bg-slate-50/50 rounded-2xl">
-                    <div className="flex items-center gap-3.5">
-                        <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-slate-700 to-slate-900 flex items-center justify-center text-white font-bold text-sm shadow-md ring-2 ring-white">
-                            {adminName.substring(0, 2).toUpperCase()}
+                {/* Admin Profile / Logout */}
+                <div className="px-3 pb-6 border-t border-slate-100 pt-4">
+                    <div className="flex items-center gap-2.5 px-3 mb-2">
+                        <div className="w-7 h-7 rounded-full bg-slate-900 text-white flex items-center justify-center text-[11px] font-semibold shrink-0">
+                            {adminName.substring(0, 1).toUpperCase()}
                         </div>
-                        <div className="flex-1 min-w-0">
-                            <p className="text-xs font-bold text-slate-800 truncate">{adminName}</p>
-                            <p className="text-[10px] text-slate-400 font-semibold truncate">Administrador</p>
+                        <div className="min-w-0">
+                            <p className="text-[13px] font-medium text-slate-900 truncate leading-none">{adminName}</p>
+                            <p className="font-mono text-[10px] text-slate-400 mt-0.5">Admin</p>
                         </div>
-                        <button
-                            onClick={handleLogout}
-                            className="p-2 text-slate-400 hover:text-red-500 hover:bg-white hover:shadow-sm rounded-xl transition-all duration-200"
-                            title="Cerrar sesión"
-                        >
-                            <span className="material-symbols-outlined text-xl">logout</span>
-                        </button>
                     </div>
+                    <button
+                        onClick={handleLogout}
+                        className="w-full flex items-center px-3 py-2 rounded-lg text-[13.5px] text-slate-500 hover:text-red-600 transition-colors text-left"
+                    >
+                        Cerrar sesión
+                    </button>
                 </div>
             </aside>
 
             {/* Main Content Area */}
-            <div className="flex-1 flex flex-col min-w-0 lg:ml-[280px]">
+            <div className="flex-1 flex flex-col min-w-0 lg:ml-[220px]">
                 {/* Mobile Header */}
-                <header className="lg:hidden sticky top-0 bg-white/80 backdrop-blur-md border-b border-slate-200/60 px-5 py-4 flex items-center justify-between z-10">
-                    <div className="flex items-center gap-3">
-                        <div className="bg-[#006B76] rounded-lg p-1.5 text-white">
-                            <span className="material-symbols-outlined text-lg">local_hospital</span>
+                <header className="lg:hidden sticky top-0 bg-white border-b border-slate-100 px-5 py-4 flex items-center justify-between z-30">
+                    <div className="flex items-center gap-2">
+                        <div className="w-6 h-6 rounded bg-red-600 text-white flex items-center justify-center">
+                            <Cross />
                         </div>
-                        <h1 className="font-black text-slate-900 tracking-tight">MediConnect</h1>
+                        <span className="text-[15px] font-semibold text-slate-900">Medi<span className="text-red-600">Connect</span></span>
                     </div>
-                    <button 
+                    <button
                         onClick={() => setIsSidebarOpen(true)}
-                        className="w-10 h-10 flex items-center justify-center rounded-xl bg-slate-100 text-slate-600 active:scale-95 transition-transform"
+                        className="w-9 h-9 flex items-center justify-center rounded-lg bg-slate-100 text-slate-600"
                     >
-                        <span className="material-symbols-outlined">menu</span>
+                        <svg width={16} height={16} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                            <line x1="3" y1="6" x2="21" y2="6" /><line x1="3" y1="12" x2="21" y2="12" /><line x1="3" y1="18" x2="21" y2="18" />
+                        </svg>
                     </button>
                 </header>
 
-                <main className="flex-1 p-5 md:p-8 lg:p-10 overflow-x-hidden">
+                {/* Desktop Top Bar */}
+                <header className="hidden lg:flex h-16 border-b border-slate-100 items-center justify-end px-8 bg-white sticky top-0 z-30">
+                    <div className="flex items-center gap-3">
+                        <div className="text-right">
+                            <p className="text-[13.5px] font-medium text-slate-900 leading-none">{adminName}</p>
+                            <p className="font-mono text-[11px] text-slate-400 mt-0.5">Administrador</p>
+                        </div>
+                        <div className="w-9 h-9 rounded-full bg-slate-900 text-white flex items-center justify-center text-[13px] font-semibold">
+                            {adminName.substring(0, 1).toUpperCase()}
+                        </div>
+                    </div>
+                </header>
+
+                <main className="flex-1 px-6 md:px-8 pt-10 pb-24 overflow-x-hidden">
                     <div className="max-w-7xl mx-auto">
                         {renderContent()}
                     </div>

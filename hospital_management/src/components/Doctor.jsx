@@ -28,6 +28,11 @@ export default function DoctorPanel() {
   const [confirm, setConfirm] = useState(null);
   const [notification, setNotification] = useState(null);
 
+  // Recetas
+  const [recetaPatient, setRecetaPatient] = useState("");
+  const [recetaText, setRecetaText] = useState("");
+  const [recetasList, setRecetasList] = useState([]);
+
   const notify = (type, message) => {
     setNotification({ type, message });
     setTimeout(() => setNotification(null), 3500);
@@ -46,6 +51,10 @@ export default function DoctorPanel() {
     setDoctorId(storedId);
     setDoctorName(storedName);
     fetchAppointments(storedId);
+    try {
+      const saved = JSON.parse(localStorage.getItem(`recetas_${storedId}`) || "[]");
+      setRecetasList(saved);
+    } catch { setRecetasList([]); }
   }, [navigate]);
 
   const fetchAppointments = async (id) => {
@@ -134,6 +143,28 @@ export default function DoctorPanel() {
     });
   };
 
+  const handleSaveReceta = () => {
+    if (!recetaPatient || !recetaText.trim()) return;
+    const newReceta = {
+      id: Date.now(),
+      patientName: recetaPatient,
+      text: recetaText.trim(),
+      date: new Date().toISOString(),
+    };
+    const updated = [newReceta, ...recetasList];
+    setRecetasList(updated);
+    localStorage.setItem(`recetas_${doctorId}`, JSON.stringify(updated));
+    setRecetaText("");
+    setRecetaPatient("");
+    notify("success", "Receta guardada correctamente.");
+  };
+
+  const handleDeleteReceta = (id) => {
+    const updated = recetasList.filter((r) => r.id !== id);
+    setRecetasList(updated);
+    localStorage.setItem(`recetas_${doctorId}`, JSON.stringify(updated));
+  };
+
   const getStatusStyle = (estado) => {
     switch (estado) {
       case "ACEPTADA": return "bg-emerald-50 text-emerald-700 border border-emerald-200";
@@ -166,6 +197,7 @@ export default function DoctorPanel() {
     { id: "pendientes", label: "Citas Pendientes", badge: pendingApps.length || null },
     { id: "aceptadas", label: "Aceptadas", badge: allAcceptedApps.length || null },
     { id: "emergencias", label: "Emergencias", badge: emergencyApps.length || null, red: true },
+    { id: "recetas", label: "Recetas" },
     { id: "pacientes", label: "Perfil" },
   ];
 
@@ -436,6 +468,84 @@ export default function DoctorPanel() {
                     </div>
                   ))}
                 </div>
+              )}
+            </div>
+          )}
+
+          {/* Recetas tab */}
+          {activeTab === "recetas" && (
+            <div className="anim-rise d-0">
+              <p className="font-mono text-[10px] tracking-[0.22em] uppercase text-slate-400 mb-1.5">Médico</p>
+              <h1 className="text-[40px] font-semibold tracking-[-0.025em] text-slate-900 leading-none mb-10">
+                Recetas
+              </h1>
+
+              {/* New recipe form */}
+              <div className="mb-12">
+                <p className="font-mono text-[10px] tracking-[0.22em] uppercase text-slate-400 mb-5">Nueva receta</p>
+
+                <div className="mb-4">
+                  <select
+                    value={recetaPatient}
+                    onChange={(e) => setRecetaPatient(e.target.value)}
+                    className="w-full sm:w-80 text-[14px] text-slate-900 bg-transparent border-b border-slate-200 focus:border-slate-900 py-2 transition-colors outline-none"
+                  >
+                    <option value="">Seleccionar paciente...</option>
+                    {patientList.map((p, i) => (
+                      <option key={i} value={p.name}>{p.name}</option>
+                    ))}
+                  </select>
+                </div>
+
+                <div className="mb-5">
+                  <textarea
+                    rows={5}
+                    placeholder="Medicamentos, dosis, indicaciones, duración del tratamiento..."
+                    value={recetaText}
+                    onChange={(e) => setRecetaText(e.target.value)}
+                    className="w-full text-[14px] text-slate-900 placeholder:text-slate-400 bg-transparent border-b border-slate-200 focus:border-slate-900 py-2 resize-none transition-colors outline-none"
+                  />
+                </div>
+
+                <button
+                  onClick={handleSaveReceta}
+                  disabled={!recetaPatient || !recetaText.trim()}
+                  className="bg-slate-900 text-white rounded-full px-4 py-1.5 text-[12px] hover:bg-slate-800 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                >
+                  Guardar Receta
+                </button>
+              </div>
+
+              {/* Saved recipes */}
+              {recetasList.length > 0 ? (
+                <div>
+                  <p className="font-mono text-[10px] tracking-[0.22em] uppercase text-slate-400 mb-4">
+                    Historial — {recetasList.length} receta{recetasList.length !== 1 ? "s" : ""}
+                  </p>
+                  <div className="divide-y divide-slate-100">
+                    {recetasList.map((receta) => (
+                      <div key={receta.id} className="py-5">
+                        <div className="flex items-center justify-between gap-4 mb-2">
+                          <div className="flex items-center gap-4 min-w-0">
+                            <span className="text-[14px] font-medium text-slate-900 truncate">{receta.patientName}</span>
+                            <span className="text-[13px] text-slate-400 shrink-0">
+                              {new Date(receta.date).toLocaleDateString("es-ES", { day: "2-digit", month: "short", year: "numeric" })}
+                            </span>
+                          </div>
+                          <button
+                            onClick={() => handleDeleteReceta(receta.id)}
+                            className="text-slate-300 hover:text-red-500 transition-colors shrink-0"
+                          >
+                            <span className="material-symbols-outlined text-[18px]">delete</span>
+                          </button>
+                        </div>
+                        <p className="text-[13px] text-slate-600 whitespace-pre-wrap leading-relaxed ml-0">{receta.text}</p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ) : (
+                <p className="text-[14px] text-slate-400 py-8 border-t border-slate-100">No hay recetas guardadas.</p>
               )}
             </div>
           )}
